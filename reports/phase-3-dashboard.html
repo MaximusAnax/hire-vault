@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HireVault — Phase 3 Job Dashboard Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #0f1117; --card: #18181b; --border: #27272a; --text: #fafafa; --muted: #a1a1aa; --primary: #8b5cf6; --accent: #3b82f6; --green: #22c55e; --yellow: #eab308; --red: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; }
+    a { color: var(--accent); }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .report-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 2rem; align-items: start; }
+    .report-main { min-width: 0; }
+    nav.toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; position: sticky; top: 1rem; align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    nav.toc ul { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; scroll-margin-top: 1.5rem; }
+    @media (max-width: 768px) { .report-layout { grid-template-columns: 1fr; } nav.toc { position: static; max-height: none; margin-bottom: 1rem; } }
+    section summary { cursor: pointer; padding: 1rem 1.25rem; font-weight: 600; list-style: none; }
+    section summary::-webkit-details-marker { display: none; }
+    section summary::after { content: " ▾"; color: var(--muted); float: right; }
+    .content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+    pre { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; font-family: "JetBrains Mono", monospace; font-size: 0.8rem; }
+    code { font-family: "JetBrains Mono", monospace; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; }
+    th { background: #27272a; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .green { background: rgba(34,197,94,0.2); color: var(--green); }
+    .yellow { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .red { background: rgba(239,68,68,0.2); color: var(--red); }
+    .mermaid { background: #09090b; border-radius: 6px; padding: 1rem; }
+    ul.files { font-size: 0.9rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>HireVault Phase 3 — Job Tracking Dashboard</h1>
+  <p class="subtitle">Progress report · May 2026 · <a href="../docs/decisions/phase-3.md">Architecture decisions</a></p>
+
+  <div class="report-layout">
+  <nav class="toc">
+    <strong>Table of contents</strong>
+    <ul>
+      <li><a href="#executive">Executive Summary</a></li>
+      <li><a href="#decisions">Decisions</a></li>
+      <li><a href="#files">Files</a></li>
+      <li><a href="#dataflow">Data Flow</a></li>
+      <li><a href="#qas">QAS Accountability</a></li>
+      <li><a href="#risks">Risks</a></li>
+    </ul>
+  </nav>
+
+  <main class="report-main">
+  <section id="executive" open>
+    <summary>Executive Summary</summary>
+    <div class="content">
+      <p>Phase 3 implements the application command center: Kanban pipeline (saved → offer/rejected), manual job entry with optional JD paste parsing, drag-and-drop status changes, Recharts analytics, and URL-based search/filter/sort.</p>
+      <ul>
+        <li><strong>/applications</strong> — Kanban board, filters, add form, pipeline charts</li>
+        <li><strong>/jobs</strong> — Job library with delete</li>
+        <li><strong>/overview</strong> — Stats + recent applications + charts</li>
+        <li><strong>Server layer</strong> — <code>lib/applications/actions.ts</code>, <code>queries.ts</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <summary>Architecture Decisions</summary>
+    <div class="content">
+      <p><a href="../docs/decisions/phase-3.md">docs/decisions/phase-3.md</a> — native DnD + select, URL filters, Recharts, combined job+application create.</p>
+    </div>
+  </section>
+
+  <section id="files">
+    <summary>Files Changed</summary>
+    <div class="content">
+      <ul class="files">
+        <li><code>lib/applications/actions.ts</code> — CRUD, status, notes</li>
+        <li><code>lib/applications/queries.ts</code> — filters, stats</li>
+        <li><code>components/applications/kanban-board.tsx</code></li>
+        <li><code>components/applications/pipeline-analytics.tsx</code></li>
+        <li><code>app/(dashboard)/applications/page.tsx</code></li>
+        <li><code>app/(dashboard)/jobs/page.tsx</code></li>
+        <li><code>app/(dashboard)/overview/page.tsx</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="dataflow">
+    <summary>Data Flow</summary>
+    <div class="content">
+      <div class="mermaid">
+flowchart TB
+  User --> Kanban[Kanban Board]
+  Kanban -->|drag / select| SA[updateApplicationStatus]
+  SA --> Apps[(applications)]
+  AddForm -->|createJob + application| Jobs[(jobs)]
+  Jobs --> Apps
+  Apps --> Stats[getApplicationStats]
+  Stats --> Charts[Recharts]
+      </div>
+    </div>
+  </section>
+
+  <section id="qas">
+    <summary>QAS Accountability</summary>
+    <div class="content">
+      <table>
+        <tr><th>Component</th><th>Rating</th></tr>
+        <tr><td>Kanban + status select</td><td><span class="badge green">HIGH</span></td></tr>
+        <tr><td>Filters via URL</td><td><span class="badge green">HIGH</span></td></tr>
+        <tr><td>JD AI parse</td><td><span class="badge yellow">MEDIUM</span> — stub without API key</td></tr>
+        <tr><td>Drag-drop a11y</td><td><span class="badge yellow">MEDIUM</span> — use select for keyboard</td></tr>
+        <tr><td>Extension sync</td><td><span class="badge red">LOW</span> — Phase 4</td></tr>
+      </table>
+      <h3>Break this</h3>
+      <ul>
+        <li>Drag card to Offer — verify <code>last_updated</code> changes.</li>
+        <li>Filter by company query param — share URL with teammate (same user only via RLS).</li>
+        <li>Add application without OPENAI_API_KEY — job saves, parse fields empty.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="risks">
+    <summary>Risk Assessment</summary>
+    <div class="content">
+      <ul>
+        <li><span class="badge yellow">YELLOW</span> No optimistic UI on drag — waits for server round-trip.</li>
+        <li><span class="badge yellow">YELLOW</span> Withdrawn status not in Kanban columns (available via select).</li>
+        <li><span class="badge yellow">YELLOW</span> Response rate is heuristic (screening+), not email tracking.</li>
+      </ul>
+    </div>
+  </section>
+  </main>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>

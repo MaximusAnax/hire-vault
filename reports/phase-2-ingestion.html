@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HireVault — Phase 2 Data Ingestion Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #0f1117; --card: #18181b; --border: #27272a; --text: #fafafa; --muted: #a1a1aa; --primary: #8b5cf6; --accent: #3b82f6; --green: #22c55e; --yellow: #eab308; --red: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; }
+    a { color: var(--accent); }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .report-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 2rem; align-items: start; }
+    .report-main { min-width: 0; }
+    nav.toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; position: sticky; top: 1rem; align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    nav.toc ul { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; scroll-margin-top: 1.5rem; }
+    @media (max-width: 768px) { .report-layout { grid-template-columns: 1fr; } nav.toc { position: static; max-height: none; margin-bottom: 1rem; } }
+    section summary { cursor: pointer; padding: 1rem 1.25rem; font-weight: 600; list-style: none; }
+    section summary::-webkit-details-marker { display: none; }
+    section summary::after { content: " ▾"; color: var(--muted); float: right; }
+    section[open] summary::after { content: " ▴"; }
+    .content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+    pre { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-family: "JetBrains Mono", monospace; font-size: 0.8rem; }
+    code { font-family: "JetBrains Mono", monospace; font-size: 0.85em; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #27272a; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .green { background: rgba(34,197,94,0.2); color: var(--green); }
+    .yellow { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .red { background: rgba(239,68,68,0.2); color: var(--red); }
+    .mermaid { background: #09090b; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+    ul.files { font-size: 0.9rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>HireVault Phase 2 — Data Ingestion</h1>
+  <p class="subtitle">Progress report · May 2026 · <a href="../docs/decisions/phase-2.md">Architecture decisions</a></p>
+
+  <div class="report-layout">
+  <nav class="toc">
+    <strong>Table of contents</strong>
+    <ul>
+      <li><a href="#executive">Executive Summary</a></li>
+      <li><a href="#decisions">Architecture Decisions</a></li>
+      <li><a href="#files">Files Changed</a></li>
+      <li><a href="#walkthrough">Code Walkthrough</a></li>
+      <li><a href="#dataflow">Data Flow</a></li>
+      <li><a href="#quality">Quality Metrics</a></li>
+      <li><a href="#risks">Risk Assessment</a></li>
+      <li><a href="#qas">QAS Accountability</a></li>
+      <li><a href="#next">Next Steps</a></li>
+    </ul>
+  </nav>
+
+  <main class="report-main">
+  <section id="executive" open>
+    <summary>Executive Summary</summary>
+    <div class="content">
+      <p>Phase 2 delivers multi-source profile ingestion: resume upload with GPT-4o parsing, LinkedIn JSON import (MVP), hash-based deduplication with conflict resolution UI, and profile validation/enrichment suggestions.</p>
+      <ul>
+        <li><strong>@hirevault/ai-core:</strong> Zod schemas, SHA-256 hashes, OpenAI parse/validate</li>
+        <li><strong>Storage:</strong> Private <code>resumes</code> bucket + <code>ingestion_runs</code> audit table</li>
+        <li><strong>Dedup:</strong> DB triggers for <code>source_hash</code> + <code>dedup_conflicts</code> queue</li>
+        <li><strong>UI:</strong> <code>/profile/import</code> — upload, LinkedIn paste, conflicts, quality score</li>
+        <li><strong>Profile:</strong> Inline experience edit via <code>ExperienceRow</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <summary>Architecture Decisions (WHY)</summary>
+    <div class="content">
+      <p>See <a href="../docs/decisions/phase-2.md">docs/decisions/phase-2.md</a>.</p>
+      <table>
+        <tr><th>Area</th><th>Choice</th><th>Rationale</th></tr>
+        <tr><td>Parsing</td><td>GPT-4o + pdf-parse/mammoth</td><td>Structured JSON; local text extraction</td></tr>
+        <tr><td>LinkedIn</td><td>JSON paste MVP</td><td>OAuth needs user API credentials</td></tr>
+        <tr><td>Dedup</td><td>SHA-256 hash + conflict UI</td><td>Union merge; no silent overwrites</td></tr>
+        <tr><td>Degradation</td><td>Works without OpenAI key</td><td>Local validation + clear errors</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="files">
+    <summary>Files Changed</summary>
+    <div class="content">
+      <h3>packages/ai-core</h3>
+      <ul class="files">
+        <li><code>src/schemas.ts</code>, <code>hash.ts</code>, <code>parse.ts</code>, <code>prompts.ts</code></li>
+      </ul>
+      <h3>packages/supabase</h3>
+      <ul class="files">
+        <li><code>migrations/20260521120000_phase2_ingestion.sql</code> — bucket, runs, conflicts, hash triggers</li>
+      </ul>
+      <h3>apps/web</h3>
+      <ul class="files">
+        <li><code>lib/ingestion/*</code> — upload, parse, dedup, apply</li>
+        <li><code>components/ingestion/*</code> — upload, LinkedIn, conflicts, validation</li>
+        <li><code>app/(dashboard)/profile/import/page.tsx</code></li>
+        <li><code>components/profile/experience-row.tsx</code> — inline edit</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="walkthrough">
+    <summary>Code Walkthrough</summary>
+    <div class="content">
+      <h3>Resume upload pipeline</h3>
+      <pre>// lib/ingestion/actions.ts
+upload → storage.resumes → extractResumeText → parseResumeText → applyParsedProfile
+→ dedup_conflicts on bullet mismatch</pre>
+      <h3>Source hash (DB trigger)</h3>
+      <pre>normalize(company)|normalize(title)|start_date → SHA-256 hex</pre>
+    </div>
+  </section>
+
+  <section id="dataflow">
+    <summary>Data Flow</summary>
+    <div class="content">
+      <div class="mermaid">
+flowchart LR
+  PDF[PDF/DOCX] --> Upload[Server Action]
+  Upload --> Storage[(resumes bucket)]
+  Upload --> Extract[pdf-parse / mammoth]
+  Extract --> GPT[GPT-4o]
+  GPT --> Apply[applyParsedProfile]
+  Apply --> DB[(experiences + RLS)]
+  Apply --> Conflicts[dedup_conflicts]
+  JSON[LinkedIn JSON] --> Apply
+      </div>
+    </div>
+  </section>
+
+  <section id="quality">
+    <summary>Quality Metrics</summary>
+    <div class="content">
+      <p>Run: <code>pnpm quality:check</code> after <code>pnpm install</code></p>
+      <table>
+        <tr><th>Gate</th><th>Notes</th></tr>
+        <tr><td>TypeScript</td><td>ai-core + web strict</td></tr>
+        <tr><td>Build</td><td>pdf-parse externalized in next.config</td></tr>
+        <tr><td>E2E</td><td><span class="badge yellow">Not yet</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="risks">
+    <summary>Risk Assessment</summary>
+    <div class="content">
+      <ul>
+        <li><span class="badge yellow">YELLOW</span> Scanned/image PDFs fail text extraction.</li>
+        <li><span class="badge yellow">YELLOW</span> LinkedIn OAuth not implemented — JSON paste only.</li>
+        <li><span class="badge yellow">YELLOW</span> Hash dedup misses spelling variants (Acme vs ACME Inc).</li>
+        <li><span class="badge red">RED</span> Apply phase 2 migration before upload (bucket + tables).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="qas">
+    <summary>QAS Accountability</summary>
+    <div class="content">
+      <h3>Confidence ratings</h3>
+      <table>
+        <tr><th>Component</th><th>Rating</th></tr>
+        <tr><td>Hash + triggers</td><td><span class="badge green">HIGH</span></td></tr>
+        <tr><td>JSON LinkedIn import</td><td><span class="badge green">HIGH</span></td></tr>
+        <tr><td>GPT resume parse</td><td><span class="badge yellow">MEDIUM</span> — needs live API key test</td></tr>
+        <tr><td>PDF extraction</td><td><span class="badge yellow">MEDIUM</span> — text PDFs only</td></tr>
+        <tr><td>LinkedIn OAuth</td><td><span class="badge red">LOW</span> — intentionally deferred</td></tr>
+      </table>
+      <h3>Break this</h3>
+      <ul>
+        <li>Upload a scanned resume image-PDF — expect extraction failure.</li>
+        <li>Import same role twice with different bullets — conflict card should appear.</li>
+        <li>Unset OPENAI_API_KEY — upload should error with hint, validation still loads locally.</li>
+      </ul>
+      <h3>Verification playbook</h3>
+      <p><strong>2 min:</strong> <code>pnpm quality:check</code></p>
+      <p><strong>10 min:</strong> Apply migration, set env, upload sample PDF, resolve a conflict, check profile tabs.</p>
+    </div>
+  </section>
+
+  <section id="next">
+    <summary>Next Steps</summary>
+    <div class="content">
+      <ol>
+        <li>Phase 3 Kanban (complete)</li>
+        <li>LinkedIn OAuth when API credentials available</li>
+        <li>Fuzzy dedup / Vitest for hash logic</li>
+      </ol>
+    </div>
+  </section>
+  </main>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>

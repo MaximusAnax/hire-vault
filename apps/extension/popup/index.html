@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HireVault</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: system-ui, sans-serif;
+        width: 320px;
+        margin: 0;
+        padding: 12px;
+        background: #0f1117;
+        color: #e4e4e7;
+        font-size: 12px;
+      }
+      h1 { font-size: 14px; margin: 0 0 8px; }
+      .muted { color: #a1a1aa; margin: 0 0 8px; }
+      .card {
+        background: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      label { display: block; margin: 6px 0 2px; color: #a1a1aa; }
+      input, textarea {
+        width: 100%;
+        background: #09090b;
+        border: 1px solid #3f3f46;
+        color: #fafafa;
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      textarea { min-height: 72px; resize: vertical; }
+      button {
+        width: 100%;
+        margin-top: 6px;
+        padding: 8px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .primary { background: #8b5cf6; color: #fff; }
+      .secondary { background: #27272a; color: #e4e4e7; }
+      .hidden { display: none; }
+      #status { min-height: 1.2em; }
+      .row { display: flex; gap: 6px; }
+      .row button { flex: 1; }
+    </style>
+  </head>
+  <body>
+    <h1>HireVault</h1>
+    <p id="status" class="muted">Loading…</p>
+
+    <div class="card">
+      <div><strong id="job-title">—</strong></div>
+      <div class="muted" id="job-company">—</div>
+      <div class="muted">Source: <span id="job-source">—</span></div>
+      <div class="row">
+        <button type="button" class="secondary" id="btn-scrape">Re-scrape</button>
+        <button type="button" class="primary" id="btn-sync">Save to HireVault</button>
+      </div>
+      <button type="button" class="secondary" id="btn-paste-open">Manual paste</button>
+    </div>
+
+    <div class="card">
+      <label for="api-base">App URL</label>
+      <input id="api-base" type="url" placeholder="http://localhost:3000" />
+      <label for="api-token">Extension token</label>
+      <input id="api-token" type="password" placeholder="From Settings → Extension" />
+    </div>
+
+    <div id="paste-modal" class="card hidden">
+      <strong>Manual paste</strong>
+      <label>Title</label>
+      <input id="paste-title" />
+      <label>Company</label>
+      <input id="paste-company" />
+      <label>Description</label>
+      <textarea id="paste-desc"></textarea>
+      <div class="row">
+        <button type="button" class="secondary" id="btn-paste-cancel">Cancel</button>
+        <button type="button" class="primary" id="btn-paste-save">Use pasted job</button>
+      </div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

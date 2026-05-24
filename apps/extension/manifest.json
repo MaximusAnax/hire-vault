@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "HireVault",
+  "version": "0.1.0",
+  "description": "Capture job listings and sync to HireVault (Phase 4)",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "HireVault"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/job-detector.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

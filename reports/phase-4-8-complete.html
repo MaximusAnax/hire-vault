@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HireVault — Phases 4–8 Complete Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #0f1117; --card: #18181b; --border: #27272a; --text: #fafafa; --muted: #a1a1aa; --primary: #8b5cf6; --accent: #3b82f6; --green: #22c55e; --yellow: #eab308; --red: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; max-width: 1100px; margin-inline: auto; }
+    a { color: var(--accent); }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .report-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 2rem; align-items: start; }
+    .report-main { min-width: 0; }
+    nav.toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; position: sticky; top: 1rem; align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    nav.toc ul { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; scroll-margin-top: 1.5rem; }
+    @media (max-width: 768px) { .report-layout { grid-template-columns: 1fr; } nav.toc { position: static; max-height: none; margin-bottom: 1rem; } }
+    section summary { cursor: pointer; padding: 1rem 1.25rem; font-weight: 600; list-style: none; }
+    section summary::-webkit-details-marker { display: none; }
+    section summary::after { content: " ▾"; color: var(--muted); float: right; }
+    .content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+    pre { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.8rem; }
+    code { font-family: "JetBrains Mono", monospace; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.85em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #27272a; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .green { background: rgba(34,197,94,0.2); color: var(--green); }
+    .yellow { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .red { background: rgba(239,68,68,0.2); color: var(--red); }
+    .mermaid { background: #09090b; border-radius: 6px; padding: 1rem; }
+    ul.files { font-size: 0.9rem; color: var(--muted); }
+    .phase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+    .phase-card { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>HireVault Phases 4–8 — Complete</h1>
+  <p class="subtitle">Progress report · May 2026 · Extension · Resumes · Interviews · Mock · Coaching · QAS</p>
+
+  <div class="report-layout">
+  <nav class="toc">
+    <strong>Table of contents</strong>
+    <ul>
+      <li><a href="#executive">Executive Summary</a></li>
+      <li><a href="#decisions">Architecture WHY</a></li>
+      <li><a href="#files">Files Changed</a></li>
+      <li><a href="#walkthrough">Code Walkthrough</a></li>
+      <li><a href="#flows">Mermaid Diagrams</a></li>
+      <li><a href="#quality">Quality Metrics</a></li>
+      <li><a href="#qas">Accountability</a></li>
+      <li><a href="#weaknesses">Known Weaknesses</a></li>
+      <li><a href="#break">Break-This Challenges</a></li>
+      <li><a href="#verify">Verification Playbook</a></li>
+      <li><a href="#next">Next Steps</a></li>
+    </ul>
+  </nav>
+
+  <main class="report-main">
+  <section id="executive" open>
+    <summary>Executive Summary</summary>
+    <div class="content">
+      <p>Phases 4 through 8 complete the HireVault platform: Chrome job capture, AI resume tailoring with ATS scoring, interview prep with practice mode, AI mock interviews, and coaching insights on the overview dashboard. QAS adds <code>pnpm quality:check</code> (typecheck, lint, Vitest, build).</p>
+      <div class="phase-grid">
+        <div class="phase-card"><strong>Phase 4</strong><br/>MV3 extension, scrapers, capture API, extension tokens</div>
+        <div class="phase-card"><strong>Phase 5</strong><br/>Tailoring, ATS score, templates, editor, versions</div>
+        <div class="phase-card"><strong>Phase 6</strong><br/>Question gen, personalized answers, flashcards, company stub</div>
+        <div class="phase-card"><strong>Phase 7</strong><br/>Mock engine, STAR scoring, session history</div>
+        <div class="phase-card"><strong>Phase 8</strong><br/>Profile strength, strategy, skill gaps, mock trends</div>
+        <div class="phase-card"><strong>QAS</strong><br/>Vitest on ai-core resume matching + ATS scoring</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <summary>Architecture Decisions (WHY)</summary>
+    <div class="content">
+      <table>
+        <tr><th>Phase</th><th>Doc</th><th>Key choice</th></tr>
+        <tr><td>4</td><td><a href="../docs/decisions/phase-4.md">phase-4.md</a></td><td>Bearer extension tokens + service-role capture route</td></tr>
+        <tr><td>5</td><td><a href="../docs/decisions/phase-5.md">phase-5.md</a></td><td>GPT-4o parse, Claude bullets, print PDF via HTML templates</td></tr>
+        <tr><td>6</td><td><a href="../docs/decisions/phase-6.md">phase-6.md</a></td><td>Questions per job_id; company_research stub table</td></tr>
+        <tr><td>7</td><td><a href="../docs/decisions/phase-7.md">phase-7.md</a></td><td>conversation_log JSON; Claude feedback_json</td></tr>
+        <tr><td>8</td><td><a href="../docs/decisions/phase-8.md">phase-8.md</a></td><td>Deterministic insights (no extra API calls on overview)</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="files">
+    <summary>Files Changed</summary>
+    <div class="content">
+      <h3>Migration</h3>
+      <ul class="files"><li><code>packages/supabase/migrations/20260521180000_phase4_8_features.sql</code></li></ul>
+      <h3>packages/ai-core</h3>
+      <ul class="files">
+        <li><code>write.ts</code>, <code>resume.ts</code>, <code>interviews.ts</code>, <code>mock.ts</code>, <code>insights.ts</code></li>
+        <li><code>resume.test.ts</code> — Vitest</li>
+      </ul>
+      <h3>packages/resume-templates</h3>
+      <ul class="files"><li><code>src/index.ts</code> — ATS, modern, compact HTML</li></ul>
+      <h3>apps/extension</h3>
+      <ul class="files">
+        <li><code>src/content/scrapers.ts</code>, <code>job-detector.ts</code></li>
+        <li><code>popup/popup.ts</code>, <code>scripts/build.mjs</code></li>
+        <li><code>app/api/extension/capture</code> (web)</li>
+      </ul>
+      <h3>apps/web</h3>
+      <ul class="files">
+        <li><code>lib/extension/*</code>, <code>lib/resumes/*</code>, <code>lib/interviews/*</code>, <code>lib/mock/*</code>, <code>lib/insights/*</code></li>
+        <li><code>app/(dashboard)/resumes|interviews|mock|overview|settings</code></li>
+        <li><code>components/resumes|interviews|mock|insights|settings/*</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="walkthrough">
+    <summary>Code Walkthrough</summary>
+    <div class="content">
+      <h3>Extension capture</h3>
+      <pre>// apps/web/app/api/extension/capture/route.ts
+// 1. Validate Bearer → extension_tokens.token_hash
+// 2. parseJobDescription(description) via GPT-4o
+// 3. Insert jobs + applications for user_id</pre>
+      <h3>Resume tailoring</h3>
+      <pre>// apps/web/lib/resumes/actions.ts — tailorResumeForJob
+// scoreExperiencesAgainstJd → rewriteBullets (Claude) → computeAtsScore
+// Insert tailored_resumes with version++, match_summary, keyword_gaps</pre>
+      <h3>Mock interview loop</h3>
+      <pre>// startMockSession → generateMockQuestion
+// submitMockAnswer → evaluateMockAnswer → next question in conversation_log</pre>
+    </div>
+  </section>
+
+  <section id="flows">
+    <summary>Mermaid Diagrams</summary>
+    <div class="content">
+      <h3>Extension sync</h3>
+      <div class="mermaid">
+sequenceDiagram
+  participant Popup as Extension Popup
+  participant CS as Content Script
+  participant API as /api/extension/capture
+  participant DB as Supabase
+  Popup->>CS: SCRAPE_JOB
+  CS-->>Popup: ScrapedJob
+  Popup->>API: POST Bearer token
+  API->>DB: jobs + applications
+      </div>
+      <h3>Resume tailoring</h3>
+      <div class="mermaid">
+flowchart LR
+  Job[Job JD] --> Parse[GPT-4o parse]
+  Profile[Experiences] --> Match[Keyword match scores]
+  Match --> Claude[Claude bullet rewrite]
+  Claude --> Editor[Resume editor]
+  Editor --> ATS[ATS score]
+  ATS --> DB[(tailored_resumes)]
+      </div>
+      <h3>Coaching overview</h3>
+      <div class="mermaid">
+flowchart TB
+  Profile --> Strength[Profile strength]
+  Apps[Applications stats] --> Strategy[Strategy rules]
+  Jobs[tech_stack] --> Gaps[Skill gaps]
+  Mock[mock_sessions] --> Trend[Score trend chart]
+      </div>
+    </div>
+  </section>
+
+  <section id="quality">
+    <summary>Quality Metrics</summary>
+    <div class="content">
+      <table>
+        <tr><th>Gate</th><th>Result</th></tr>
+        <tr><td><code>pnpm typecheck</code></td><td><span class="badge green">PASS</span></td></tr>
+        <tr><td><code>pnpm test</code> (ai-core)</td><td><span class="badge green">2/2 PASS</span></td></tr>
+        <tr><td><code>pnpm build</code> (web + extension)</td><td><span class="badge green">PASS</span></td></tr>
+        <tr><td>ESLint (next build)</td><td><span class="badge green">PASS</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="qas">
+    <summary>QAS Accountability (Confidence)</summary>
+    <div class="content">
+      <table>
+        <tr><th>Component</th><th>Rating</th><th>Notes</th></tr>
+        <tr><td>Extension scrapers</td><td><span class="badge yellow">MEDIUM</span></td><td>DOM-dependent; paste fallback</td></tr>
+        <tr><td>Capture API + tokens</td><td><span class="badge green">HIGH</span></td><td>Hashed tokens, user-scoped inserts</td></tr>
+        <tr><td>Experience matching</td><td><span class="badge green">HIGH</span></td><td>Vitest covered</td></tr>
+        <tr><td>Claude bullet rewrite</td><td><span class="badge yellow">MEDIUM</span></td><td>Requires ANTHROPIC_API_KEY</td></tr>
+        <tr><td>Interview question gen</td><td><span class="badge yellow">MEDIUM</span></td><td>Fallback questions without OpenAI</td></tr>
+        <tr><td>Mock scoring</td><td><span class="badge yellow">MEDIUM</span></td><td>Static feedback when Claude unavailable</td></tr>
+        <tr><td>Insights engine</td><td><span class="badge green">HIGH</span></td><td>Deterministic, no API dependency</td></tr>
+        <tr><td>Company research</td><td><span class="badge red">LOW</span></td><td>Stub only — by design</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="weaknesses">
+    <summary>Known Weaknesses</summary>
+    <div class="content">
+      <ul>
+        <li>Job scrapers will break on site redesigns — use manual paste.</li>
+        <li>ATS score is keyword heuristic, not vendor-specific simulation.</li>
+        <li>PDF export uses browser print, not programmatic PDF generation.</li>
+        <li>Mock interviews are text-only (no voice).</li>
+        <li>Company research returns static stub until external API key is added.</li>
+        <li>Migration <code>20260521180000</code> must be applied manually in Supabase.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="break">
+    <summary>Break-This Challenges</summary>
+    <div class="content">
+      <ol>
+        <li>Revoke extension token in Settings — capture API should return 401.</li>
+        <li>Tailor resume without API keys — job saves, bullets unchanged, ATS still computed.</li>
+        <li>Generate 10 questions, practice rate 1-star, verify <code>practiced_at</code> updates.</li>
+        <li>Complete mock session with 3 answers — check <code>feedback_json</code> and overview trend.</li>
+        <li>Add job with tech_stack “kubernetes” not on profile — skill gap appears on overview.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="verify">
+    <summary>Verification Playbook</summary>
+    <div class="content">
+      <pre>pnpm install
+# Apply packages/supabase/migrations/20260521180000_phase4_8_features.sql
+cp apps/web/.env.local.example apps/web/.env.local
+pnpm quality:check
+pnpm dev
+# Extension: apps/extension/dist → chrome://extensions Load unpacked
+# Settings → Generate token → paste in extension popup</pre>
+    </div>
+  </section>
+
+  <section id="next">
+    <summary>Next Steps</summary>
+    <div class="content">
+      <ul>
+        <li>Wire live company/news API behind <code>company_research</code>.</li>
+        <li>Add React-PDF or Puppeteer for server-side PDF if print is insufficient.</li>
+        <li>Extension: optional OAuth session instead of manual token.</li>
+        <li>E2E tests with Playwright for capture + tailor flows.</li>
+        <li>Voice mock interviews via Web Speech API.</li>
+      </ul>
+    </div>
+  </section>
+  </main>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>

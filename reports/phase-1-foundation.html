@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HireVault — Phase 1 Foundation Report</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #18181b;
+      --border: #27272a;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --primary: #8b5cf6;
+      --accent: #3b82f6;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 2rem;
+    }
+    a { color: var(--accent); }
+    h1, h2, h3 { letter-spacing: -0.02em; }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .report-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+    .report-main { min-width: 0; }
+    nav.toc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
+    }
+    nav.toc ul { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+    nav.toc a:hover { color: var(--primary); }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      scroll-margin-top: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .report-layout { grid-template-columns: 1fr; }
+      nav.toc { position: static; max-height: none; margin-bottom: 1rem; }
+    }
+    section summary {
+      cursor: pointer;
+      padding: 1rem 1.25rem;
+      font-weight: 600;
+      list-style: none;
+    }
+    section summary::-webkit-details-marker { display: none; }
+    section summary::after { content: " ▾"; color: var(--muted); float: right; }
+    section[open] summary::after { content: " ▴"; }
+    .content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+    pre {
+      background: #09090b;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.8rem;
+    }
+    code { font-family: "JetBrains Mono", monospace; font-size: 0.85em; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #27272a; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .green { background: rgba(34,197,94,0.2); color: var(--green); }
+    .yellow { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .red { background: rgba(239,68,68,0.2); color: var(--red); }
+    .mermaid { background: #09090b; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+    ul.files { font-size: 0.9rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>HireVault Phase 1 — Foundation</h1>
+  <p class="subtitle">Progress report · May 2026 · <a href="../docs/decisions/phase-1.md">Architecture decisions</a></p>
+
+  <div class="report-layout">
+  <nav class="toc">
+    <strong>Table of contents</strong>
+    <ul>
+      <li><a href="#executive">Executive Summary</a></li>
+      <li><a href="#decisions">Architecture Decisions</a></li>
+      <li><a href="#files">Files Changed</a></li>
+      <li><a href="#walkthrough">Code Walkthrough</a></li>
+      <li><a href="#dataflow">Data Flow</a></li>
+      <li><a href="#quality">Quality Metrics</a></li>
+      <li><a href="#risks">Risk Assessment</a></li>
+      <li><a href="#qas">QAS Accountability</a></li>
+      <li><a href="#learning">Learning</a></li>
+      <li><a href="#next">Next Steps</a></li>
+    </ul>
+  </nav>
+
+  <main class="report-main">
+  <section id="executive" open>
+    <summary>Executive Summary</summary>
+    <div class="content">
+      <p>Phase 1 delivers the HireVault foundation: a Turborepo monorepo with a Next.js 15 web app, shared types, Supabase schema with RLS, Linear-inspired dark UI (sidebar + Cmd+K), Google OAuth auth, and full profile CRUD for five sections.</p>
+      <ul>
+        <li><strong>Scaffold:</strong> pnpm workspaces, turbo.json, <code>pnpm quality:check</code></li>
+        <li><strong>Database:</strong> Full ER schema migration + RLS + auto-profile trigger on signup</li>
+        <li><strong>UI:</strong> shadcn/ui, dashboard shell, command palette</li>
+        <li><strong>Auth:</strong> @supabase/ssr cookies, middleware, OAuth callback</li>
+        <li><strong>Profile:</strong> Server Actions for create/delete + forms per section</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <summary>Architecture Decisions (WHY)</summary>
+    <div class="content">
+      <p>See <a href="../docs/decisions/phase-1.md">docs/decisions/phase-1.md</a> for full ADR-style notes. Highlights:</p>
+      <table>
+        <tr><th>Area</th><th>Choice</th><th>Rationale</th></tr>
+        <tr><td>Monorepo</td><td>Turborepo + pnpm</td><td>Shared types, cached tasks</td></tr>
+        <tr><td>Backend</td><td>Supabase</td><td>Auth + Postgres + RLS in one</td></tr>
+        <tr><td>Auth</td><td>Google OAuth + SSR cookies</td><td>Secure session handling in App Router</td></tr>
+        <tr><td>UI</td><td>shadcn + cmdk</td><td>Linear-like dark theme, keyboard nav</td></tr>
+        <tr><td>Mutations</td><td>Server Actions</td><td>Colocated with RSC profile page</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="files">
+    <summary>Files Changed</summary>
+    <div class="content">
+      <h3>Root</h3>
+      <ul class="files">
+        <li><code>package.json</code>, <code>pnpm-workspace.yaml</code>, <code>turbo.json</code>, <code>README.md</code></li>
+      </ul>
+      <h3>apps/web</h3>
+      <ul class="files">
+        <li><code>middleware.ts</code> — session refresh + route guard</li>
+        <li><code>lib/supabase/*</code> — browser/server/middleware clients</li>
+        <li><code>lib/profile/actions.ts</code> — profile CRUD server actions</li>
+        <li><code>components/layout/*</code> — sidebar, shell, command palette</li>
+        <li><code>components/ui/*</code> — shadcn primitives</li>
+        <li><code>app/(auth)/login</code>, <code>app/auth/callback</code>, <code>app/(dashboard)/*</code></li>
+      </ul>
+      <h3>packages</h3>
+      <ul class="files">
+        <li><code>packages/types/src/index.ts</code> — shared DB types</li>
+        <li><code>packages/supabase/migrations/20260521041500_initial_schema.sql</code></li>
+        <li><code>packages/supabase/docs/auth-google-oauth.md</code></li>
+      </ul>
+      <h3>apps/extension</h3>
+      <ul class="files">
+        <li><code>manifest.json</code>, popup, background/content scaffolds</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="walkthrough">
+    <summary>Code Walkthrough</summary>
+    <div class="content">
+      <h3>Middleware session + redirect</h3>
+      <pre>// apps/web/lib/supabase/middleware.ts
+const { data: { user } } = await supabase.auth.getUser();
+if (!user && !isPublicRoute) redirect('/login');
+if (user && pathname === '/login') redirect('/overview');</pre>
+      <h3>Auto profile on signup</h3>
+      <pre>-- packages/supabase/migrations/...
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();</pre>
+      <h3>Profile server action</h3>
+      <pre>// apps/web/lib/profile/actions.ts
+export async function createExperience(formData: FormData) {
+  const profileId = await requireProfileId();
+  await supabase.from('experiences').insert({ profile_id: profileId, ... });
+  revalidatePath('/profile');
+}</pre>
+    </div>
+  </section>
+
+  <section id="dataflow">
+    <summary>Data Flow</summary>
+    <div class="content">
+      <div class="mermaid">
+flowchart LR
+  User[User] --> Login["/login OAuth"]
+  Login --> Google[Google]
+  Google --> Callback["/auth/callback"]
+  Callback --> Cookies[Supabase cookies]
+  Cookies --> MW[Middleware]
+  MW --> Dashboard[Dashboard RSC]
+  Dashboard --> SA[Server Actions]
+  SA --> DB[(Postgres + RLS)]
+      </div>
+    </div>
+  </section>
+
+  <section id="quality">
+    <summary>Quality Metrics</summary>
+    <div class="content">
+      <table>
+        <tr><th>Gate</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>TypeScript strict</td><td><span class="badge green">Enabled</span></td><td>apps/web tsconfig</td></tr>
+        <tr><td>ESLint</td><td><span class="badge yellow">Run locally</span></td><td>next lint via turbo</td></tr>
+        <tr><td>Build</td><td><span class="badge green">PASS</span></td><td>next build succeeds with placeholder env</td></tr>
+        <tr><td>E2E / Vitest</td><td><span class="badge yellow">Phase 2+</span></td><td>Not in Phase 1 scope</td></tr>
+        <tr><td>RLS tests</td><td><span class="badge yellow">Manual</span></td><td>Apply migration + test two users</td></tr>
+      </table>
+      <p>Run: <code>pnpm quality:check</code></p>
+    </div>
+  </section>
+
+  <section id="risks">
+    <summary>Risk Assessment</summary>
+    <div class="content">
+      <ul>
+        <li><strong>Supabase not linked:</strong> OAuth and CRUD fail until <code>.env.local</code> is set and migration applied.</li>
+        <li><strong>handle_new_user trigger:</strong> Existing users before migration need manual profile insert.</li>
+        <li><strong>No edit-in-place:</strong> Profile sections support add/delete only; inline edit is Phase 2.</li>
+        <li><strong>Extension paths:</strong> manifest references built JS paths; build pipeline is Phase 4.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="qas">
+    <summary>QAS Accountability</summary>
+    <div class="content">
+      <h3>Confidence ratings</h3>
+      <table>
+        <tr><th>Component</th><th>Rating</th></tr>
+        <tr><td>Monorepo scaffold</td><td><span class="badge green">HIGH</span></td></tr>
+        <tr><td>SQL schema + RLS</td><td><span class="badge yellow">MEDIUM</span> — needs live Supabase verification</td></tr>
+        <tr><td>OAuth flow</td><td><span class="badge yellow">MEDIUM</span> — redirect URLs must match dashboard</td></tr>
+        <tr><td>Profile CRUD</td><td><span class="badge green">HIGH</span> — standard Server Actions pattern</td></tr>
+        <tr><td>Command palette</td><td><span class="badge green">HIGH</span></td></tr>
+      </table>
+      <h3>Known weaknesses</h3>
+      <ul>
+        <li>No automated RLS policy tests yet.</li>
+        <li>Database types are hand-written, not generated from Supabase CLI.</li>
+        <li>User menu does not load Google avatar from session metadata.</li>
+      </ul>
+      <h3>Break this</h3>
+      <ul>
+        <li>Visit <code>/profile</code> without running migration — expect empty/error states.</li>
+        <li>Sign in as two users; confirm user A cannot read user B's experiences via API.</li>
+        <li>Submit experience form with empty company — should fail validation at DB.</li>
+      </ul>
+      <h3>Verification playbook</h3>
+      <p><strong>2 min:</strong> <code>pnpm install && pnpm quality:check</code></p>
+      <p><strong>10 min:</strong> Apply migration, set env, <code>pnpm dev</code>, Google login, add one experience, refresh page.</p>
+      <p><strong>Deep dive:</strong> Read <code>middleware.ts</code>, migration RLS policies, <code>user_owns_profile()</code> function.</p>
+      <h3>Questions to ask</h3>
+      <ul>
+        <li>What happens if Google OAuth redirect URL is wrong?</li>
+        <li>Where is the test proving RLS blocks cross-user reads?</li>
+        <li>Why Server Actions vs API routes for profile mutations?</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="learning">
+    <summary>Learning</summary>
+    <div class="content">
+      <p><strong>Why @supabase/ssr:</strong> Refreshes JWT in middleware and stores session in cookies — Server Components can call <code>getUser()</code> without client hydration.</p>
+      <p><strong>Why RLS:</strong> Even if the anon key leaks, Postgres policies restrict rows to <code>auth.uid()</code>.</p>
+      <p><strong>Dig deeper:</strong> <a href="https://supabase.com/docs/guides/auth/server-side/nextjs">Supabase Next.js Auth</a>, <a href="https://ui.shadcn.com">shadcn/ui</a></p>
+      <p><strong>Modify this:</strong> Change sidebar accent in <code>globals.css</code> <code>--primary</code> HSL values and reload.</p>
+    </div>
+  </section>
+
+  <section id="next">
+    <summary>Next Steps (Phase 2+)</summary>
+    <div class="content">
+      <ol>
+        <li>Resume upload + GPT-4o parsing</li>
+        <li>LinkedIn import + deduplication engine</li>
+        <li>Application Kanban (Phase 3)</li>
+        <li>Chrome extension job capture (Phase 4)</li>
+      </ol>
+    </div>
+  </section>
+  </main>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>
