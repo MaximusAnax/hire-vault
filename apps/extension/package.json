@@ -1,0 +1,17 @@
+{
+  "name": "@hirevault/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HireVault Chrome extension (Phase 4 scaffold)",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@hirevault/types": "workspace:*",
+    "@types/chrome": "^0.0.287",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2"
+  }
+}

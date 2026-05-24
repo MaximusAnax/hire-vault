@@ -1,0 +1,8 @@
+{
+  "name": "@hirevault/supabase",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "typecheck": "echo 'No TypeScript in supabase package'"
+  }
+}

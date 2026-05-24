@@ -1,0 +1,31 @@
+import { ExtensionTokens } from "@/components/settings/extension-tokens";
+import { listExtensionTokens } from "@/lib/extension/actions";
+
+export default async function SettingsPage() {
+  const tokens = await listExtensionTokens();
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-muted-foreground text-sm">
+          Environment: copy <code className="font-mono text-xs bg-muted px-1 rounded">apps/web/.env.local.example</code> to{" "}
+          <code className="font-mono text-xs bg-muted px-1 rounded">.env.local</code>. See{" "}
+          <code className="font-mono text-xs bg-muted px-1 rounded">packages/supabase/docs/auth-google-oauth.md</code>.
+        </p>
+      </div>
+      <ExtensionTokens tokens={tokens} />
+      <div className="text-sm text-muted-foreground space-y-1">
+        <p>
+          <strong>OPENAI_API_KEY</strong> — JD parsing, resume validation, question generation structure.
+        </p>
+        <p>
+          <strong>ANTHROPIC_API_KEY</strong> — Bullet rewrites, personalized answers, mock feedback.
+        </p>
+        <p>
+          <strong>SUPABASE_SERVICE_ROLE_KEY</strong> — Extension capture API only (server-side).
+        </p>
+      </div>
+    </div>
+  );
+}
