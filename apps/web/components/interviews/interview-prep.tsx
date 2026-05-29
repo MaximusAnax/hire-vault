@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Trash2 } from "lucide-react";
 import {
   generateQuestionsForJob,
   personalizeQuestionAnswer,
   refineQuestionAnswer,
   ratePractice,
   fetchCompanyResearch,
+  deleteQuestion,
 } from "@/lib/interviews/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,9 +49,21 @@ export function InterviewPrep({
   const [draft, setDraft] = useState("");
   const jobQuestions = jobId
     ? questions.filter((q) => q.job_id === jobId)
-    : questions;
+    : [];
 
   const current = jobQuestions[flashIndex];
+
+  const bankHasQuestions = jobQuestions.length > 0;
+  const allRated =
+    bankHasQuestions &&
+    jobQuestions.every((q) => q.practice_rating != null || q.practiced);
+  const generateMoreDisabled = pending || !allRated;
+  const generateLabel = bankHasQuestions ? "Generate more" : "Generate questions";
+  const generateTitle = bankHasQuestions
+    ? allRated
+      ? "Generate additional questions targeting uncovered parts of the JD"
+      : "Rate all current questions before generating more"
+    : "Generate the initial question bank for this role";
 
   return (
     <div className="space-y-6">
@@ -72,14 +86,15 @@ export function InterviewPrep({
             <>
               <Button
                 size="sm"
-                disabled={pending}
+                disabled={bankHasQuestions ? generateMoreDisabled : pending}
+                title={generateTitle}
                 onClick={() =>
                   startTransition(async () => {
                     await generateQuestionsForJob(jobId);
                   })
                 }
               >
-                Generate questions
+                {generateLabel}
               </Button>
               <Button
                 size="sm"
@@ -200,23 +215,53 @@ export function InterviewPrep({
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Question bank</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm max-h-80 overflow-auto">
-          {questions.length === 0 ? (
-            <p className="text-muted-foreground">Generate questions for a job to begin.</p>
-          ) : (
-            questions.map((q) => (
-              <div key={q.id} className="border-b border-border pb-2">
-                <span className="text-xs text-muted-foreground">{q.category}</span>
-                <p>{q.question}</p>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+      {jobId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Question bank</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm max-h-80 overflow-auto">
+            {jobQuestions.length === 0 ? (
+              <p className="text-muted-foreground">
+                No questions yet for this role. Click &ldquo;Generate questions&rdquo; above to seed the bank.
+              </p>
+            ) : (
+              jobQuestions.map((q) => {
+                const rated = q.practice_rating != null || q.practiced;
+                return (
+                  <div
+                    key={q.id}
+                    className="flex items-start justify-between gap-3 border-b border-border pb-2"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-xs text-muted-foreground">
+                        {q.category}
+                        {rated ? " · rated" : " · not yet rated"}
+                      </span>
+                      <p>{q.question}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={pending}
+                      title="Delete question"
+                      aria-label="Delete question"
+                      onClick={() =>
+                        startTransition(async () => {
+                          await deleteQuestion(q.id);
+                          setFlashIndex(0);
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

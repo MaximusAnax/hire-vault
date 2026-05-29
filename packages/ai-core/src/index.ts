@@ -7,3 +7,4 @@ export * from "./resume";
 export * from "./interviews";
 export * from "./mock";
 export * from "./insights";
+export * from "./summary";

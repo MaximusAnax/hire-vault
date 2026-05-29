@@ -23,8 +23,26 @@ export async function generateQuestionsForJob(jobId: string) {
   }
 
   const text = job.description_raw ?? `${job.title} at ${job.company}`;
-  const result = await generateInterviewQuestions(text, 10);
+
+  const { data: existingRows } = await supabase
+    .from("interview_questions")
+    .select("question")
+    .eq("job_id", jobId);
+  const existingQuestions = (existingRows ?? [])
+    .map((row) => row.question)
+    .filter((q): q is string => typeof q === "string" && q.length > 0);
+
+  const result = await generateInterviewQuestions(text, 10, existingQuestions);
   const topics = technicalPrepTopics(job.tech_stack ?? [], text);
+
+  if (result.questions.length === 0) {
+    return {
+      success: true,
+      count: 0,
+      degraded: result.degraded,
+      message: "No new questions were generated (existing bank may already cover the JD).",
+    };
+  }
 
   const rows = result.questions.map((q) => ({
     job_id: jobId,
@@ -121,6 +139,22 @@ export async function updateSelfNotes(questionId: string, notes: string) {
   const { error } = await supabase
     .from("interview_questions")
     .update({ self_notes: notes })
+    .eq("id", questionId);
+  if (error) return { error: error.message };
+  revalidatePath("/interviews");
+  return { success: true };
+}
+
+export async function deleteQuestion(questionId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("interview_questions")
+    .delete()
     .eq("id", questionId);
   if (error) return { error: error.message };
   revalidatePath("/interviews");

@@ -91,7 +91,10 @@ export type ValidationSuggestion = z.infer<typeof validationSuggestionSchema>;
 export const parsedJobDescriptionSchema = z.object({
   title: z.string().optional(),
   company: z.string().optional(),
+  // Legacy single-string location, kept for backward compatibility with older parses.
   location: z.string().nullable().optional(),
+  // Preferred multi-location field — chip array. Empty array when nothing is found.
+  locations: z.array(z.string()).optional(),
   required_qualifications: z.array(z.string()).optional(),
   preferred_qualifications: z.array(z.string()).optional(),
   tech_stack: z.array(z.string()).optional(),

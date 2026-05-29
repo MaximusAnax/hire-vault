@@ -1,14 +1,31 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { parseJobDescription } from "@hirevault/ai-core";
+import { parseJobDescription, type ParsedJobDescription } from "@hirevault/ai-core";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplicationStatus } from "@hirevault/types";
+import { fetchJobFromUrl, isLikelyUrl } from "./scrape";
 
 function revalidateApps() {
   revalidatePath("/applications");
   revalidatePath("/jobs");
   revalidatePath("/overview");
+}
+
+/** Normalize a free-text or comma-separated locations field into a clean string[]. */
+function normalizeLocations(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .filter((v): v is string => Boolean(v));
+  }
+  if (typeof raw === "string") {
+    return raw
+      .split(/[,\n]/g)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  return [];
 }
 
 export async function createJob(formData: FormData) {
@@ -34,13 +51,35 @@ export async function createJob(formData: FormData) {
     }
   }
 
+  // locations: prefer explicit form field (locations[] or comma-joined `locations`),
+  // then AI-parsed locations[], then legacy single `location`, then parsed.location.
+  const formLocations = formData.getAll("locations");
+  const formLocationsList = formLocations.length
+    ? normalizeLocations(formLocations as string[])
+    : normalizeLocations(formData.get("locations"));
+  const aiLocations = normalizeLocations(parsed?.locations);
+  const singleLegacy = ((formData.get("location") as string) || "").trim();
+  const parsedSingle = (parsed?.location ?? "").toString().trim();
+  const locations = formLocationsList.length
+    ? formLocationsList
+    : aiLocations.length
+      ? aiLocations
+      : singleLegacy
+        ? [singleLegacy]
+        : parsedSingle
+          ? [parsedSingle]
+          : [];
+  // First chip mirrors into legacy `location` for backward compatibility.
+  const primaryLocation = locations[0] ?? null;
+
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
       user_id: user.id,
       title: (formData.get("title") as string) || parsed?.title || "Untitled role",
       company: (formData.get("company") as string) || parsed?.company || "Unknown company",
-      location: (formData.get("location") as string) || parsed?.location || null,
+      location: primaryLocation,
+      locations,
       url: (formData.get("url") as string) || null,
       description_raw: description || null,
       description_parsed: parsed,
@@ -56,6 +95,110 @@ export async function createJob(formData: FormData) {
   if (error) return { error: error.message };
   revalidateApps();
   return { success: true, jobId: job?.id };
+}
+
+export interface ParseAndPreviewJobResult {
+  /** Free-text JD or scraped page text — surfaced so the form can post it back on save. */
+  description_raw: string;
+  /** Source the text was obtained from. */
+  source: "url" | "text";
+  /** Original URL if input was a link. */
+  url?: string;
+  /** Per-domain handler that succeeded, if any. */
+  scrapeSource?: "greenhouse" | "lever" | "ashby" | "workday" | "generic";
+  /** AI-parsed structured fields (empty object if AI is unavailable). */
+  parsed: ParsedJobDescription;
+  /** Normalized location chips merged from scrape + AI. */
+  locations: string[];
+  /** True when AI is unavailable / returned no data; the user can still edit and save. */
+  degraded?: boolean;
+  /** AI parse error, if any. */
+  warning?: string;
+}
+
+export interface ParseAndPreviewJobBlocked {
+  blocked: true;
+  url: string;
+  fallbackHint: string;
+  status?: number;
+}
+
+export interface ParseAndPreviewJobError {
+  error: string;
+}
+
+/**
+ * Smart-capture entry point. Accepts either a URL or pasted JD text, runs the scraper
+ * when needed, then pipes the result through {@link parseJobDescription}. Always
+ * returns a structured preview that the client can edit and POST back via {@link createJob}.
+ */
+export async function parseAndPreviewJob(
+  input: string
+): Promise<ParseAndPreviewJobResult | ParseAndPreviewJobBlocked | ParseAndPreviewJobError> {
+  const trimmed = (input ?? "").trim();
+  if (!trimmed) return { error: "Paste a job URL or job description first." };
+
+  let descriptionText = "";
+  let source: "url" | "text" = "text";
+  let url: string | undefined;
+  let scrapeSource: ParseAndPreviewJobResult["scrapeSource"];
+  let scrapedTitle: string | null = null;
+  let scrapedCompany: string | null = null;
+  let scrapedLocation: string | null = null;
+
+  if (isLikelyUrl(trimmed)) {
+    source = "url";
+    url = trimmed;
+    const scraped = await fetchJobFromUrl(trimmed);
+    if ("blocked" in scraped && scraped.blocked) {
+      return {
+        blocked: true,
+        url: scraped.url,
+        fallbackHint: scraped.fallbackHint,
+        status: scraped.status,
+      };
+    }
+    descriptionText = scraped.text;
+    scrapeSource = scraped.source;
+    scrapedTitle = scraped.title;
+    scrapedCompany = scraped.company;
+    scrapedLocation = scraped.location;
+  } else {
+    descriptionText = trimmed;
+  }
+
+  if (descriptionText.length < 60) {
+    return { error: "That looks too short to parse — paste the full JD or a longer link." };
+  }
+
+  const ai = await parseJobDescription(descriptionText);
+  const parsed: ParsedJobDescription = ai.data ?? {};
+
+  // Backfill from scraped DOM where AI missed.
+  if (!parsed.title && scrapedTitle) parsed.title = scrapedTitle;
+  if (!parsed.company && scrapedCompany) parsed.company = scrapedCompany;
+  if (!parsed.location && scrapedLocation) parsed.location = scrapedLocation;
+
+  const aiLocations = normalizeLocations(parsed.locations);
+  const scrapedLocations = normalizeLocations(scrapedLocation);
+  const legacyLocations = normalizeLocations(parsed.location);
+  // Prefer AI-parsed multi-location, then scraped, then legacy single-string.
+  const locations = aiLocations.length
+    ? aiLocations
+    : scrapedLocations.length
+      ? scrapedLocations
+      : legacyLocations;
+
+  return {
+    description_raw: descriptionText,
+    source,
+    url,
+    scrapeSource,
+    parsed,
+    locations,
+    degraded: ai.degraded,
+    warning: ai.error,
+  };
 }
 
 export async function createApplication(formData: FormData) {

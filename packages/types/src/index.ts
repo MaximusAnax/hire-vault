@@ -45,6 +45,30 @@ export interface Profile {
   portfolio_url: string | null;
   raw_resume_data: Record<string, unknown> | null;
   source: ProfileSource;
+  target_roles: string[];
+  pitch: string | null;
+  summary_stale: boolean;
+  summary_assembled_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SummarySnippetEntityType =
+  | "experience"
+  | "education"
+  | "project"
+  | "skill"
+  | "course";
+
+export interface ProfileSummarySnippet {
+  id: string;
+  profile_id: string;
+  entity_type: SummarySnippetEntityType;
+  entity_id: string;
+  snippet: string;
+  source_hash: string;
+  model: string;
+  generated_at: string;
   created_at: string;
   updated_at: string;
 }
@@ -127,7 +151,10 @@ export interface Job {
   user_id: string;
   title: string;
   company: string;
+  /** Legacy single-string location, kept for backward compatibility. */
   location: string | null;
+  /** Multi-location chip array. Populated by refinement iteration 1; older rows may be empty. */
+  locations: string[];
   url: string | null;
   description_raw: string | null;
   description_parsed: Record<string, unknown> | null;
@@ -289,6 +316,15 @@ export interface Database {
       >;
       jobs: TableDef<Job>;
       applications: TableDef<Application>;
+      profile_summary_snippets: TableDef<
+        ProfileSummarySnippet,
+        Omit<ProfileSummarySnippet, "id" | "created_at" | "updated_at" | "generated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          generated_at?: string;
+        }
+      >;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

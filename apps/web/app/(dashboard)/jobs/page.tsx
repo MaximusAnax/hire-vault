@@ -32,16 +32,33 @@ export default async function JobsPage() {
         {jobList.length === 0 ? (
           <p className="text-sm text-muted-foreground">No jobs yet. Add one above.</p>
         ) : (
-          jobList.map((job) => (
+          jobList.map((job) => {
+            const chips = job.locations?.length
+              ? job.locations
+              : job.location
+                ? [job.location]
+                : [];
+            return (
             <Card key={job.id}>
               <CardHeader className="flex flex-row items-start justify-between pb-2">
-                <div>
+                <div className="space-y-1.5">
                   <CardTitle className="text-base">{job.title}</CardTitle>
                   <p className="text-sm text-muted-foreground">
                     {job.company}
-                    {job.location ? ` · ${job.location}` : ""}
                     {job.job_type ? ` · ${job.job_type}` : ""}
                   </p>
+                  {chips.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {chips.map((loc) => (
+                        <span
+                          key={loc}
+                          className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
+                        >
+                          {loc}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <DeleteJobButton jobId={job.id} />
               </CardHeader>
@@ -63,7 +80,8 @@ export default async function JobsPage() {
                 )}
               </CardContent>
             </Card>
-          ))
+            );
+          })
         )}
       </div>
     </div>

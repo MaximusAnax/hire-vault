@@ -17,6 +17,7 @@ import {
   VALIDATION_SYSTEM,
   VALIDATION_USER,
 } from "./prompts";
+import { polishBullets } from "./write";
 
 export function isOpenAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
@@ -76,10 +77,71 @@ export async function parseResumeText(text: string): Promise<{
     if (!parsed.success) {
       return { data: null, error: parsed.error.message };
     }
-    return { data: parsed.data };
+    const polished = await polishParsedResumeBullets(parsed.data);
+    return { data: polished };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Parse failed" };
   }
+}
+
+/**
+ * Run every experience/project bullet through `polishBullets`. Import-time
+ * only — manual entries are NOT polished (see plan: A4).
+ */
+export async function polishParsedResumeBullets(
+  resume: ParsedResume
+): Promise<ParsedResume> {
+  const experiences = await Promise.all(
+    (resume.experiences ?? []).map(async (exp) => {
+      const bullets = exp.bullet_points ?? [];
+      if (bullets.length === 0) return exp;
+      const result = await polishBullets(bullets, exp.title);
+      return { ...exp, bullet_points: result.bullets };
+    })
+  );
+  const projects = await Promise.all(
+    (resume.projects ?? []).map(async (proj) => {
+      const bullets = proj.bullet_points ?? [];
+      if (bullets.length === 0) return proj;
+      const result = await polishBullets(bullets, proj.name);
+      return { ...proj, bullet_points: result.bullets };
+    })
+  );
+  return {
+    ...resume,
+    experiences: resume.experiences ? experiences : resume.experiences,
+    projects: resume.projects ? projects : resume.projects,
+  };
+}
+
+/**
+ * Polish bullets on a LinkedIn import payload. Same rules as resume parse:
+ * import-time only. Skills/education/courses have no bullets so we leave them.
+ */
+export async function polishLinkedInImportBullets(
+  data: LinkedInImport
+): Promise<LinkedInImport> {
+  const experiences = await Promise.all(
+    (data.experiences ?? []).map(async (exp) => {
+      const bullets = exp.bullet_points ?? [];
+      if (bullets.length === 0) return exp;
+      const result = await polishBullets(bullets, exp.title);
+      return { ...exp, bullet_points: result.bullets };
+    })
+  );
+  const projects = await Promise.all(
+    (data.projects ?? []).map(async (proj) => {
+      const bullets = proj.bullet_points ?? [];
+      if (bullets.length === 0) return proj;
+      const result = await polishBullets(bullets, proj.name);
+      return { ...proj, bullet_points: result.bullets };
+    })
+  );
+  return {
+    ...data,
+    experiences: data.experiences ? experiences : data.experiences,
+    projects: data.projects ? projects : data.projects,
+  };
 }
 
 export async function parseJobDescription(text: string): Promise<{

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   parseResumeText,
   parseLinkedInJson,
+  polishLinkedInImportBullets,
   validateProfileData,
   validateProfileLocally,
 } from "@hirevault/ai-core";
@@ -141,8 +142,11 @@ export async function importLinkedInJson(formData: FormData) {
     };
   }
 
-  const { data: parsed, error: parseError } = parseLinkedInJson(jsonText);
-  if (!parsed) return { error: parseError ?? "Invalid JSON" };
+  const { data: parsedRaw, error: parseError } = parseLinkedInJson(jsonText);
+  if (!parsedRaw) return { error: parseError ?? "Invalid JSON" };
+
+  // Polish import bullets — manual create/update paths remain untouched.
+  const parsed = await polishLinkedInImportBullets(parsedRaw);
 
   if (linkedinUrl) parsed.linkedin_url = linkedinUrl;
 

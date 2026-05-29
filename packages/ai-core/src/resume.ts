@@ -1,6 +1,19 @@
 import { claudeComplete } from "./write";
 import type { ParsedJobDescription } from "./schemas";
 
+export interface CandidateContext {
+  target_roles?: string[] | null;
+  pitch?: string | null;
+}
+
+function candidateContextBlock(ctx?: CandidateContext | null): string {
+  const lines: string[] = [];
+  const roles = (ctx?.target_roles ?? []).filter(Boolean);
+  if (roles.length) lines.push(`Target roles: ${roles.join(", ")}`);
+  if (ctx?.pitch?.trim()) lines.push(`Personal pitch: ${ctx.pitch.trim()}`);
+  return lines.length ? `\nCandidate context:\n${lines.join("\n")}\n` : "";
+}
+
 export interface ExperienceMatch {
   experienceId: string;
   company: string;
@@ -98,13 +111,14 @@ export function computeAtsScore(
 
 export async function rewriteBullets(
   bullets: string[],
-  jobContext: string
+  jobContext: string,
+  candidate?: CandidateContext | null
 ): Promise<{ bullets: string[]; degraded?: boolean; error?: string }> {
   if (bullets.length === 0) return { bullets: [] };
 
   const result = await claudeComplete(
     `You rewrite resume bullets for ATS and impact. Return ONLY a JSON array of strings, same count as input. Use strong verbs and metrics when possible.`,
-    `Job context:\n${jobContext.slice(0, 6000)}\n\nRewrite these bullets:\n${JSON.stringify(bullets)}`
+    `Job context:\n${jobContext.slice(0, 6000)}${candidateContextBlock(candidate)}\nRewrite these bullets:\n${JSON.stringify(bullets)}`
   );
 
   if (!result.text) {

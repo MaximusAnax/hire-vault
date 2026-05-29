@@ -75,15 +75,8 @@ export function ResumeWorkspace({
     });
   }
 
-  if (!selected && resumes.length === 0) {
-    return (
-      <Card>
-        <CardContent className="pt-6 text-sm text-muted-foreground">
-          Select a job below to generate your first tailored resume.
-        </CardContent>
-      </Card>
-    );
-  }
+  const hasJobs = jobs.length > 0;
+  const hasResumes = resumes.length > 0;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -93,37 +86,76 @@ export function ResumeWorkspace({
             <CardTitle className="text-base">Jobs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-64 overflow-auto">
-            {jobs.map((j) => (
-              <Button
-                key={j.id}
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                disabled={pending}
-                onClick={() => handleTailor(j.id)}
-              >
-                {j.title} @ {j.company}
-              </Button>
-            ))}
+            {hasJobs ? (
+              jobs.map((j) => (
+                <Button
+                  key={j.id}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  disabled={pending}
+                  onClick={() => handleTailor(j.id)}
+                >
+                  {j.title} @ {j.company}
+                </Button>
+              ))
+            ) : (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>No jobs saved yet — add one from the Applications page.</p>
+                <Link
+                  href="/applications"
+                  className="inline-block text-xs font-medium text-primary hover:underline"
+                >
+                  Go to Applications →
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
+        {hasResumes ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Versions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              {resumes.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/resumes?id=${r.id}`}
+                  className="block rounded px-2 py-1 hover:bg-muted"
+                >
+                  {r.label ?? `v${r.version}`} · ATS {r.ats_score ?? "—"}
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
+
+      {!selected && !hasResumes ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Versions</CardTitle>
+            <CardTitle className="text-base">Tailor your first resume</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            {resumes.map((r) => (
-              <Link
-                key={r.id}
-                href={`/resumes?id=${r.id}`}
-                className="block rounded px-2 py-1 hover:bg-muted"
-              >
-                {r.label ?? `v${r.version}`} · ATS {r.ats_score ?? "—"}
-              </Link>
-            ))}
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Pick a job on the left to generate your first tailored resume. We&apos;ll match your
+              profile against the JD, draft an ATS-friendly version, and let you tweak it.
+            </p>
+            {!hasJobs ? (
+              <p className="text-xs">
+                Don&apos;t have any jobs yet?{" "}
+                <Link href="/applications" className="text-primary hover:underline">
+                  Add one from Applications
+                </Link>
+                .
+              </p>
+            ) : (
+              <p className="text-xs">Click any job on the left to start.</p>
+            )}
           </CardContent>
         </Card>
-      </div>
+      ) : null}
 
       {selected && content && (
         <Card>

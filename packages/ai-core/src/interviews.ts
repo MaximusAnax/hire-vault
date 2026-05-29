@@ -2,6 +2,19 @@ import { claudeComplete } from "./write";
 import { parseJobDescription } from "./parse";
 import type { QuestionCategory } from "./schemas";
 
+export interface InterviewCandidateContext {
+  target_roles?: string[] | null;
+  pitch?: string | null;
+}
+
+function candidateContextBlock(ctx?: InterviewCandidateContext | null): string {
+  const lines: string[] = [];
+  const roles = (ctx?.target_roles ?? []).filter(Boolean);
+  if (roles.length) lines.push(`Target roles: ${roles.join(", ")}`);
+  if (ctx?.pitch?.trim()) lines.push(`Personal pitch: ${ctx.pitch.trim()}`);
+  return lines.length ? `\nCandidate context:\n${lines.join("\n")}\n` : "";
+}
+
 export interface GeneratedQuestion {
   question: string;
   category: QuestionCategory;
@@ -17,21 +30,52 @@ const FALLBACK_QUESTIONS: GeneratedQuestion[] = [
   { question: "How do you handle conflicting priorities?", category: "situational", difficulty: 3 },
 ];
 
+/**
+ * Build the "do not duplicate these" block that is appended to the user
+ * prompt when an interview question bank already exists for the role.
+ *
+ * Exported so tests can verify the block embeds the existing questions
+ * verbatim without having to mock the Anthropic SDK.
+ */
+export function buildExistingQuestionsBlock(
+  existingQuestions: string[] | undefined,
+  count: number
+): string {
+  if (!existingQuestions?.length) return "";
+  const list = existingQuestions
+    .map((q, i) => `${i + 1}. ${q}`)
+    .join("\n");
+  return (
+    `\n\nEXISTING QUESTIONS already in the bank for this role ` +
+    `(do NOT duplicate their semantics — even paraphrases count as duplicates). ` +
+    `Generate questions that probe DIFFERENT angles of the job description:\n` +
+    `${list}\n\n` +
+    `Focus the new questions on uncovered parts of the JD: job responsibilities ` +
+    `not yet asked about, preferred qualifications not yet probed, and tech ` +
+    `stack items not yet covered. If the existing bank already saturates the JD, ` +
+    `you may return fewer than ${count} questions rather than repeat ground.`
+  );
+}
+
 export async function generateInterviewQuestions(
   jobDescription: string,
-  count = 8
+  count = 8,
+  existingQuestions: string[] = [],
+  candidate?: InterviewCandidateContext | null
 ): Promise<{ questions: GeneratedQuestion[]; degraded?: boolean; error?: string }> {
   const jd = await parseJobDescription(jobDescription);
   const stack = jd.data?.tech_stack?.join(", ") ?? "general";
 
+  const dedupeBlock = buildExistingQuestionsBlock(existingQuestions, count);
+
   const result = await claudeComplete(
     `Generate interview prep questions. Return ONLY JSON: { "questions": [{ "question", "category" (behavioral|technical|situational|role_specific), "difficulty" (1-5), "technical_topics"?: string[] }] }`,
-    `Generate ${count} interview questions for this role. Emphasize stack: ${stack}.\n\nJD:\n${jobDescription.slice(0, 8000)}`
+    `Generate ${count} interview questions for this role. Emphasize stack: ${stack}.${candidateContextBlock(candidate)}${dedupeBlock}\n\nJD:\n${jobDescription.slice(0, 8000)}`
   );
 
   if (!result.text) {
     return {
-      questions: FALLBACK_QUESTIONS.slice(0, count),
+      questions: existingQuestions.length ? [] : FALLBACK_QUESTIONS.slice(0, count),
       degraded: true,
       error: result.error,
     };
@@ -43,7 +87,10 @@ export async function generateInterviewQuestions(
   } catch {
     /* fallback */
   }
-  return { questions: FALLBACK_QUESTIONS.slice(0, count), degraded: result.degraded };
+  return {
+    questions: existingQuestions.length ? [] : FALLBACK_QUESTIONS.slice(0, count),
+    degraded: result.degraded,
+  };
 }
 
 export async function personalizeAnswer(

@@ -6,6 +6,7 @@ import { APPLICATION_STATUSES } from "@hirevault/types";
 import { updateApplicationStatus, addApplicationNote } from "@/lib/applications/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StarRating } from "@/components/ui/star-rating";
 
 const STATUS_LABELS: Record<string, string> = {
   saved: "Saved",
@@ -42,9 +43,25 @@ export function ApplicationCard({
         </p>
         <p className="text-xs text-muted-foreground">{job?.company ?? "—"}</p>
       </div>
-      {application.priority && (
-        <span className="text-xs text-primary">P{application.priority}</span>
-      )}
+      {(job?.locations?.length ?? 0) > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {job!.locations.map((loc) => (
+            <span
+              key={loc}
+              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+            >
+              {loc}
+            </span>
+          ))}
+        </div>
+      ) : job?.location ? (
+        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+          {job.location}
+        </span>
+      ) : null}
+      {application.priority ? (
+        <StarRating value={application.priority} disabled size={14} hideLabel />
+      ) : null}
       {application.applied_date && (
         <p className="text-xs text-muted-foreground">Applied {application.applied_date}</p>
       )}

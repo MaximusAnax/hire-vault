@@ -19,7 +19,13 @@ ${text.slice(0, 28000)}
 export const JD_PARSE_SYSTEM = `Extract structured job posting data. Return JSON only.`;
 
 export const JD_PARSE_USER = (text: string) =>
-  `Parse this job description. Return JSON: title, company, location, required_qualifications[], preferred_qualifications[], tech_stack[], salary_range, job_type (full_time|internship|contract).
+  `Parse this job description. Return JSON with keys: title, company, location, locations, required_qualifications[], preferred_qualifications[], tech_stack[], salary_range, job_type (full_time|internship|contract).
+
+Rules for locations:
+- "locations" MUST be an array of strings. Include every distinct location mentioned (cities, regions, "Remote", "Hybrid – San Francisco", etc.).
+- If multiple are listed (e.g. "San Francisco, New York, or Remote"), output each as a separate array entry. Do NOT merge them with commas.
+- "location" should be the first/primary location string (kept for backward compatibility). Leave null if none is mentioned.
+- Use the literal strings as they appear; do not invent locations.
 
 Job description:
 ---
