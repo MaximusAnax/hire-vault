@@ -56,7 +56,7 @@
 
 ## Build without Supabase linked
 
-**Decision:** Placeholder env fallbacks for compile-time; real OAuth requires `.env.local`.
+**Decision:** Placeholder env fallbacks for compile-time; real OAuth requires root `.env` (loaded via `next.config.ts` → repo root).
 
 **Why:** `pnpm quality:check` can run in CI before secrets exist.
 

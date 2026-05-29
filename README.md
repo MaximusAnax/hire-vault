@@ -56,11 +56,15 @@ pnpm install
 
 ### 3. Environment
 
+All secrets live in a **single file at the repo root** (not under `apps/web`):
+
 ```bash
-cp apps/web/.env.local.example apps/web/.env.local
-# Required: Supabase URL and anon key
-# Optional: OPENAI_API_KEY for resume/JD parsing and AI profile validation
+cp .env.example .env
+# Edit .env — required: Supabase URL + anon key (+ service role for extension capture)
+# Optional: OPENAI_API_KEY, ANTHROPIC_API_KEY, CURSOR_API_KEY (orchestrator)
 ```
+
+Next.js, Vitest, Turbo tasks, and `@hirevault/orchestrator` load from `<repo>/.env` automatically.
 
 ### 4. Run dev server
 

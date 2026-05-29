@@ -9,8 +9,8 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground text-sm">
-          Environment: copy <code className="font-mono text-xs bg-muted px-1 rounded">apps/web/.env.local.example</code> to{" "}
-          <code className="font-mono text-xs bg-muted px-1 rounded">.env.local</code>. See{" "}
+          Environment: copy <code className="font-mono text-xs bg-muted px-1 rounded">.env.example</code> to{" "}
+          <code className="font-mono text-xs bg-muted px-1 rounded">.env</code> at the repository root. See{" "}
           <code className="font-mono text-xs bg-muted px-1 rounded">packages/supabase/docs/auth-google-oauth.md</code>.
         </p>
       </div>

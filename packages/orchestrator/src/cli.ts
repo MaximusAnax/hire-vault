@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { config as loadDotenv } from "dotenv";
 import { runMilestoneLoop } from "./driver.js";
 
 const repoRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../.."));
+loadDotenv({ path: path.join(repoRoot, ".env") });
 
 function parseArgs(argv: string[]): { milestone?: string } {
   const idx = argv.indexOf("--milestone");

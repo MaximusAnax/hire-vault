@@ -4,10 +4,10 @@ Migrations live in `packages/supabase/migrations/` and are the **source of truth
 
 ## One-time setup
 
+Set `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` in the repository root **`.env`** (see `.env.example`), then:
+
 ```bash
 # Install CLI: https://supabase.com/docs/guides/cli
-export SUPABASE_ACCESS_TOKEN=...
-export SUPABASE_DB_PASSWORD=...
 
 supabase link --project-ref vnybrxanwlklbtcuizxw
 # Preview branch for the agent loop (locked decision):
