@@ -77,12 +77,18 @@ export function AddApplicationForm() {
                 <Textarea
                   value={smartInput}
                   onChange={(e) => setSmartInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && smartInput.trim()) {
+                      e.preventDefault();
+                      handleSmartSubmit();
+                    }
+                  }}
                   rows={6}
                   placeholder={"https://boards.greenhouse.io/acme/jobs/123\n— or —\nPaste the job description text here…"}
                 />
                 <p className="text-xs text-muted-foreground">
                   We’ll fetch the page (Greenhouse, Lever, Ashby, Workday supported best-effort)
-                  and let you review every field before saving.
+                  and let you review every field before saving. Press ⌘/Ctrl+Enter to preview.
                 </p>
               </div>
               {banner?.kind === "blocked" ? (

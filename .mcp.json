@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp",
+      "headers": {},
+      "description": "Read-only for Adversarial Tester: SELECT, advisors, RLS verification. OAuth at connect time."
+    }
+  }
+}

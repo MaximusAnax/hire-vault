@@ -1,0 +1,13 @@
+{
+  "verdict": "PASS",
+  "milestone": "m3",
+  "iteration": 1,
+  "gates": { "typecheck": true, "lint": true, "test": true, "build": true },
+  "acceptanceChecks": [
+    { "id": "m3-gates", "status": "pass", "evidence": "pnpm quality:check" },
+    { "id": "m3-ats-score", "status": "pass", "evidence": "resume.test.ts computeAtsScore + scoreExperiencesAgainstJd" },
+    { "id": "m3-grounded-prompt", "status": "pass", "evidence": "rewriteBullets system prompt no-fabrication clause" },
+    { "id": "m3-candidate-context", "status": "pass", "evidence": "tailorResumeForJob passes target_roles/pitch" }
+  ],
+  "findings": []
+}

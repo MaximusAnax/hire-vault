@@ -5,27 +5,12 @@ import { parseJobDescription, type ParsedJobDescription } from "@hirevault/ai-co
 import { createClient } from "@/lib/supabase/server";
 import type { ApplicationStatus } from "@hirevault/types";
 import { fetchJobFromUrl, isLikelyUrl } from "./scrape";
+import { normalizeLocations } from "./locations";
 
 function revalidateApps() {
   revalidatePath("/applications");
   revalidatePath("/jobs");
   revalidatePath("/overview");
-}
-
-/** Normalize a free-text or comma-separated locations field into a clean string[]. */
-function normalizeLocations(raw: unknown): string[] {
-  if (Array.isArray(raw)) {
-    return raw
-      .map((v) => (typeof v === "string" ? v.trim() : ""))
-      .filter((v): v is string => Boolean(v));
-  }
-  if (typeof raw === "string") {
-    return raw
-      .split(/[,\n]/g)
-      .map((v) => v.trim())
-      .filter(Boolean);
-  }
-  return [];
 }
 
 export async function createJob(formData: FormData) {
@@ -41,7 +26,18 @@ export async function createJob(formData: FormData) {
   let required_qualifications: string[] = [];
   let preferred_qualifications: string[] = [];
 
-  if (description.length > 50) {
+  const skipAi = formData.get("skip_ai_parse") === "1";
+  if (skipAi) {
+    tech_stack = formData.getAll("tech_stack").map((v) => String(v).trim()).filter(Boolean);
+    required_qualifications = formData
+      .getAll("required_qualifications")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    preferred_qualifications = formData
+      .getAll("preferred_qualifications")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+  } else if (description.length > 50) {
     const result = await parseJobDescription(description);
     if (result.data) {
       parsed = result.data;
@@ -199,6 +195,35 @@ export async function parseAndPreviewJob(
     degraded: ai.degraded,
     warning: ai.error,
   };
+}
+
+/**
+ * Fast save from smart-capture preview — no second AI parse. Client posts edited fields only.
+ */
+export async function createJobAndApplicationFromPreview(formData: FormData) {
+  formData.set("skip_ai_parse", "1");
+  const jobResult = await createJob(formData);
+  if (jobResult.error) return jobResult;
+  const jobId = jobResult.jobId;
+  if (!jobId) return { error: "Job insert failed" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const status = (formData.get("status") as ApplicationStatus) || "saved";
+  const { error } = await supabase.from("applications").insert({
+    user_id: user.id,
+    job_id: jobId,
+    status,
+    priority: formData.get("priority") ? Number(formData.get("priority")) : null,
+    notes: [],
+  });
+  if (error) return { error: error.message };
+  revalidateApps();
+  return { success: true, jobId };
 }
 
 export async function createApplication(formData: FormData) {

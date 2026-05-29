@@ -9,7 +9,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "quality:check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "quality:check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "db": "bash scripts/db.sh"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

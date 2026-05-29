@@ -48,13 +48,21 @@ export async function POST(request: Request) {
     }
   }
 
+  const locationsRaw = (body.job as { locations?: string[] })?.locations;
+  const locations = Array.isArray(locationsRaw)
+    ? [...new Set(locationsRaw.map((l) => l.trim()).filter(Boolean))]
+    : job.location
+      ? [job.location.trim()]
+      : [];
+
   const { data: inserted, error } = await supabase
     .from("jobs")
     .insert({
       user_id: auth.userId,
       title: job.title,
       company: job.company ?? "Unknown company",
-      location: job.location ?? null,
+      location: locations[0] ?? job.location ?? null,
+      locations,
       url: job.url ?? null,
       description_raw: description || null,
       description_parsed: parsed,

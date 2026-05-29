@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeAtsScore, scoreExperiencesAgainstJd } from "./resume";
+import { computeAtsScore, rewriteBullets, scoreExperiencesAgainstJd } from "./resume";
 
 describe("scoreExperiencesAgainstJd", () => {
   it("scores higher when bullets mention JD keywords", () => {
@@ -22,6 +22,14 @@ describe("scoreExperiencesAgainstJd", () => {
     );
     expect(matches[0].score).toBeGreaterThan(0);
     expect(matches[0].matchedKeywords.length).toBeGreaterThan(0);
+  });
+});
+
+describe("rewriteBullets", () => {
+  it("returns same-length bullets when AI is unavailable (degraded)", async () => {
+    const bullets = ["Built APIs", "Led migrations"];
+    const result = await rewriteBullets(bullets, "SWE at Acme", { target_roles: ["SWE"] });
+    expect(result.bullets.length).toBe(2);
   });
 });
 

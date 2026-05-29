@@ -6,6 +6,7 @@ import {
   tailorResumeForJob,
   updateTailoredResumeContent,
   exportResumeHtml,
+  exportResumePdf,
   deleteTailoredResume,
 } from "@/lib/resumes/actions";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,15 @@ export function ResumeWorkspace({
         w?.document.write(res.html);
         w?.document.close();
       }
+    });
+  }
+
+  function handleExportPdf() {
+    if (!selected) return;
+    startTransition(async () => {
+      const res = await exportResumePdf(selected.id, template);
+      if (res.error) setMessage(res.error);
+      else if (res.pdf_storage_path) setMessage(`PDF saved to storage (${res.pdf_storage_path})`);
     });
   }
 
@@ -177,8 +187,11 @@ export function ResumeWorkspace({
               <Button size="sm" variant="outline" onClick={handleSave} disabled={pending}>
                 Save
               </Button>
-              <Button size="sm" onClick={handleExport} disabled={pending}>
-                Preview / Print PDF
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={pending}>
+                Preview HTML
+              </Button>
+              <Button size="sm" onClick={handleExportPdf} disabled={pending}>
+                Export PDF
               </Button>
               <Button
                 size="sm"

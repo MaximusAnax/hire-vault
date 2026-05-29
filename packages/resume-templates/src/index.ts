@@ -63,6 +63,9 @@ export function renderResumeHtml(
 </body></html>`;
 }
 
+export type { ResumeRenderer } from "./renderer";
+export { LatexRenderer } from "./renderer";
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

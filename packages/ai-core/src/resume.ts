@@ -117,7 +117,9 @@ export async function rewriteBullets(
   if (bullets.length === 0) return { bullets: [] };
 
   const result = await claudeComplete(
-    `You rewrite resume bullets for ATS and impact. Return ONLY a JSON array of strings, same count as input. Use strong verbs and metrics when possible.`,
+    `You rewrite resume bullets for ATS and impact. Return ONLY a JSON array of strings, same count as input. ` +
+      `Use strong verbs and surface metrics only when they already appear in the source bullets. ` +
+      `Never invent employers, titles, dates, technologies, or numbers. Do not add scope the candidate did not claim.`,
     `Job context:\n${jobContext.slice(0, 6000)}${candidateContextBlock(candidate)}\nRewrite these bullets:\n${JSON.stringify(bullets)}`
   );
 

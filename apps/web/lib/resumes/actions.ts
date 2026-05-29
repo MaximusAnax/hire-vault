@@ -11,6 +11,7 @@ import {
 import { renderResumeHtml } from "@hirevault/resume-templates";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfileId, getProfileForUser } from "@/lib/profile/get-profile";
+import { HtmlChromiumRenderer } from "@/lib/resumes/pdf";
 
 async function loadProfileBundle(profileId: string) {
   const supabase = await createClient();
@@ -64,7 +65,11 @@ export async function tailorResumeForJob(jobId: string, applicationId?: string) 
       .map(async (e) => {
         const rewrite = await rewriteBullets(
           e.bullet_points ?? [],
-          `${job.title} at ${job.company}\n${(job.description_raw ?? "").slice(0, 4000)}`
+          `${job.title} at ${job.company}\n${(job.description_raw ?? "").slice(0, 4000)}`,
+          {
+            target_roles: profile.target_roles,
+            pitch: profile.pitch,
+          }
         );
         return {
           id: e.id,
@@ -80,8 +85,14 @@ export async function tailorResumeForJob(jobId: string, applicationId?: string) 
       })
   );
 
+  const headline =
+    profile.pitch?.trim() ||
+    (profile.target_roles?.length ? profile.target_roles.join(" · ") : undefined) ||
+    profile.headline ||
+    undefined;
+
   const content: ResumeContent = {
-    headline: profile.headline ?? undefined,
+    headline,
     summary: profile.summary ?? undefined,
     experiences: tailoredExperiences,
     skills: bundle.skills,
@@ -168,6 +179,54 @@ export async function exportResumeHtml(resumeId: string, templateId: string) {
     templateId as "ats" | "modern" | "compact"
   );
   return { html };
+}
+
+export async function exportResumePdf(resumeId: string, templateId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data } = await supabase
+    .from("tailored_resumes")
+    .select("content, application_id")
+    .eq("id", resumeId)
+    .single();
+  if (!data?.content) return { error: "Resume not found" };
+
+  const content = data.content as ResumeContent;
+  const tid = templateId as "ats" | "modern" | "compact";
+
+  let pdf: Buffer;
+  try {
+    pdf = await new HtmlChromiumRenderer().renderToPdf(content, tid);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "PDF generation failed",
+      degraded: true,
+    };
+  }
+
+  const storagePath = `${user.id}/${resumeId}.pdf`;
+  const { error: uploadError } = await supabase.storage
+    .from("resumes")
+    .upload(storagePath, pdf, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { error: updateError } = await supabase
+    .from("tailored_resumes")
+    .update({ pdf_storage_path: storagePath })
+    .eq("id", resumeId);
+
+  if (updateError) return { error: updateError.message };
+
+  revalidatePath("/resumes");
+  return { success: true, pdf_storage_path: storagePath };
 }
 
 export async function deleteTailoredResume(resumeId: string) {

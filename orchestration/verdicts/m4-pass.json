@@ -1,0 +1,13 @@
+{
+  "verdict": "PASS",
+  "milestone": "m4",
+  "iteration": 1,
+  "gates": { "typecheck": true, "lint": true, "test": true, "build": true },
+  "acceptanceChecks": [
+    { "id": "m4-gates", "status": "pass", "evidence": "pnpm quality:check" },
+    { "id": "m4-renderer-interface", "status": "pass", "evidence": "renderer.ts + renderer.test.ts" },
+    { "id": "m4-storage-path", "status": "pass", "evidence": "exportResumePdf updates pdf_storage_path" },
+    { "id": "m4-latex-stub", "status": "pass", "evidence": "LatexRenderer throws configured message" }
+  ],
+  "findings": []
+}

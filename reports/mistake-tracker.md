@@ -8,6 +8,7 @@ Cumulative log of bugs found after delivery. Phase 1 starts with no entries.
 | 2026-05-21 | Insights queries | Lint | Low | Yes (build) | Unused destructured mockSessions variable |
 | 2026-05-24 | Resumes empty-state | Functional | Medium | No | Workspace early-returned when `resumes.length === 0`, hiding the Jobs panel and stranding new users. Fixed in Phase C; prevention measure: Phase E added scrape.ts fixture tests + interview bank unit test, plus a UX rule that empty-state branches must always render entry points. |
 | 2026-05-24 | Interview bank cross-job leakage | Functional | Medium | No | Question bank rendered every user question regardless of selected `jobId`, leaking other roles' prep into the current view. Fixed in Phase D by filtering on `jobId` and hiding the bank entirely when no role is selected; prevention measure: Phase E added scrape.ts fixture tests + interview bank unit test (`buildExistingQuestionsBlock`). |
+| 2026-05-28 | PDF export without Chrome | Operational | Low | No | `HtmlChromiumRenderer` requires `PUPPETEER_EXECUTABLE_PATH` locally; caught at runtime with actionable error. Prevention: document in implementation-notes + resume workspace message. |
 
 ## Recurring patterns
 

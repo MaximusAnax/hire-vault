@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createApplication } from "@/lib/applications/actions";
+import { createJobAndApplicationFromPreview } from "@/lib/applications/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,7 +126,10 @@ export function JobPreviewCard({ preview, onCancel, onSaved }: JobPreviewCardPro
       fd.set("status", draft.status);
       if (draft.priority != null) fd.set("priority", String(draft.priority));
       fd.set("description_raw", draft.description_raw);
-      const res = await createApplication(fd);
+      for (const t of draft.tech_stack) fd.append("tech_stack", t);
+      for (const q of draft.required_qualifications) fd.append("required_qualifications", q);
+      for (const q of draft.preferred_qualifications) fd.append("preferred_qualifications", q);
+      const res = await createJobAndApplicationFromPreview(fd);
       if ("error" in res && res.error) {
         setError(res.error);
         return;

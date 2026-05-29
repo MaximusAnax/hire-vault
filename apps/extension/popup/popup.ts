@@ -82,7 +82,13 @@ async function syncJob() {
     type: "SYNC_JOB",
     apiBase: els.apiBase.value,
     token: els.token.value,
-    payload: { job: currentJob, createApplication: true },
+    payload: {
+      job: {
+        ...currentJob,
+        locations: currentJob.location ? [currentJob.location] : [],
+      },
+      createApplication: true,
+    },
   });
   if (res?.error) {
     els.status.textContent = res.error;
