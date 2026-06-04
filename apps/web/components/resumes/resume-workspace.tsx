@@ -2,18 +2,9 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  tailorResumeForJob,
-  updateTailoredResumeContent,
-  exportResumeHtml,
-  exportResumePdf,
-  deleteTailoredResume,
-} from "@/lib/resumes/actions";
+import { tailorResumeForJob, exportResumePdf, deleteTailoredResume } from "@/lib/resumes/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { RESUME_TEMPLATES } from "@hirevault/resume-templates";
-import type { ResumeContent } from "@hirevault/ai-core";
 
 interface JobRow {
   id: string;
@@ -26,8 +17,7 @@ interface ResumeRow {
   label: string | null;
   ats_score: number | null;
   version: number;
-  template_used: string | null;
-  content: ResumeContent;
+  pdf_storage_path?: string | null;
   jobs?: { title: string; company: string } | null;
 }
 
@@ -43,45 +33,21 @@ export function ResumeWorkspace({
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const selected = resumes.find((r) => r.id === selectedId) ?? resumes[0];
-  const [content, setContent] = useState<ResumeContent | null>(
-    selected?.content ?? null
-  );
-  const [template, setTemplate] = useState(selected?.template_used ?? "ats");
 
   function handleTailor(jobId: string) {
     startTransition(async () => {
       const res = await tailorResumeForJob(jobId);
       if (res.error) setMessage(res.error);
-      else setMessage(`Tailored resume created (ATS ${res.atsScore ?? "—"})`);
-    });
-  }
-
-  function handleSave() {
-    if (!selected || !content) return;
-    startTransition(async () => {
-      const res = await updateTailoredResumeContent(selected.id, content, template);
-      setMessage(res.error ?? "Saved");
-    });
-  }
-
-  function handleExport() {
-    if (!selected) return;
-    startTransition(async () => {
-      const res = await exportResumeHtml(selected.id, template);
-      if (res.html) {
-        const w = window.open("", "_blank");
-        w?.document.write(res.html);
-        w?.document.close();
-      }
+      else setMessage(`Tailored resume v${res.atsScore != null ? ` · ATS ${res.atsScore}` : ""}`);
     });
   }
 
   function handleExportPdf() {
     if (!selected) return;
     startTransition(async () => {
-      const res = await exportResumePdf(selected.id, template);
+      const res = await exportResumePdf(selected.id);
       if (res.error) setMessage(res.error);
-      else if (res.pdf_storage_path) setMessage(`PDF saved to storage (${res.pdf_storage_path})`);
+      else setMessage("PDF generated (LaTeX). Requires pdflatex on the server.");
     });
   }
 
@@ -111,12 +77,9 @@ export function ResumeWorkspace({
               ))
             ) : (
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>No jobs saved yet — add one from the Applications page.</p>
-                <Link
-                  href="/applications"
-                  className="inline-block text-xs font-medium text-primary hover:underline"
-                >
-                  Go to Applications →
+                <p>No jobs yet.</p>
+                <Link href="/applications" className="text-xs font-medium text-primary hover:underline">
+                  Add from Applications →
                 </Link>
               </div>
             )}
@@ -149,56 +112,31 @@ export function ResumeWorkspace({
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Pick a job on the left to generate your first tailored resume. We&apos;ll match your
-              profile against the JD, draft an ATS-friendly version, and let you tweak it.
+              Pick a job to tailor experience bullets for the JD, then export a PDF using your
+              LaTeX template (same layout as resume_ref.tex).
             </p>
-            {!hasJobs ? (
-              <p className="text-xs">
-                Don&apos;t have any jobs yet?{" "}
-                <Link href="/applications" className="text-primary hover:underline">
-                  Add one from Applications
-                </Link>
-                .
-              </p>
-            ) : (
-              <p className="text-xs">Click any job on the left to start.</p>
-            )}
+            <p className="text-xs">
+              Set your name, contact, and Technical skills (LaTeX) on the Profile page first.
+            </p>
           </CardContent>
         </Card>
-      ) : null}
-
-      {selected && content && (
+      ) : (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">
-              {selected.jobs?.title ?? "Resume"} editor
+              {selected?.jobs?.title ?? "Resume"} — {selected?.label ?? ""}
             </CardTitle>
             <div className="flex gap-2 flex-wrap">
-              {RESUME_TEMPLATES.map((t) => (
-                <Button
-                  key={t.id}
-                  size="sm"
-                  variant={template === t.id ? "default" : "outline"}
-                  onClick={() => setTemplate(t.id)}
-                >
-                  {t.name}
-                </Button>
-              ))}
-              <Button size="sm" variant="outline" onClick={handleSave} disabled={pending}>
-                Save
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleExport} disabled={pending}>
-                Preview HTML
-              </Button>
-              <Button size="sm" onClick={handleExportPdf} disabled={pending}>
-                Export PDF
+              <Button size="sm" onClick={handleExportPdf} disabled={pending || !selected}>
+                {pending ? "Working…" : "Export PDF (LaTeX)"}
               </Button>
               <Button
                 size="sm"
                 variant="destructive"
+                disabled={pending || !selected}
                 onClick={() =>
                   startTransition(async () => {
-                    await deleteTailoredResume(selected.id);
+                    if (selected) await deleteTailoredResume(selected.id);
                   })
                 }
               >
@@ -206,33 +144,15 @@ export function ResumeWorkspace({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {message && <p className="text-xs text-muted-foreground">{message}</p>}
-            <label className="text-xs text-muted-foreground">Summary</label>
-            <Textarea
-              value={content.summary ?? ""}
-              onChange={(e) => setContent({ ...content, summary: e.target.value })}
-              rows={3}
-            />
-            {content.experiences?.map((exp, i) => (
-              <div key={exp.id ?? i} className="border rounded-md p-3 space-y-2">
-                <p className="font-medium text-sm">
-                  {exp.title} — {exp.company}
-                </p>
-                <Textarea
-                  value={exp.bullet_points.join("\n")}
-                  onChange={(e) => {
-                    const exps = [...(content.experiences ?? [])];
-                    exps[i] = {
-                      ...exp,
-                      bullet_points: e.target.value.split("\n").filter(Boolean),
-                    };
-                    setContent({ ...content, experiences: exps });
-                  }}
-                  rows={4}
-                />
-              </div>
-            ))}
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            {message && <p className="text-xs">{message}</p>}
+            <p>
+              ATS score: <strong>{selected?.ats_score ?? "—"}</strong>. Export compiles your profile
+              (education, experience, skills, leadership) with tailored bullets for matched roles.
+            </p>
+            <p className="text-xs">
+              Requires <code className="text-[11px]">pdflatex</code> locally — see README.
+            </p>
           </CardContent>
         </Card>
       )}

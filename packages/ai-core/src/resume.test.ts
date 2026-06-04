@@ -37,7 +37,6 @@ describe("computeAtsScore", () => {
   it("returns gaps for missing keywords", () => {
     const result = computeAtsScore(
       {
-        summary: "Software engineer",
         experiences: [{ bullet_points: ["Led team"] }],
       },
       ["kubernetes", "python"]

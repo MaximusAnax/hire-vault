@@ -81,7 +81,6 @@ export async function applyParsedProfile(
 
   const profileFields = {
     headline: parsed.headline ?? null,
-    summary: parsed.summary ?? null,
     location: parsed.location ?? null,
     linkedin_url: "linkedin_url" in parsed ? parsed.linkedin_url ?? null : null,
     github_url: "github_url" in parsed ? (parsed as ParsedResume).github_url ?? null : null,
@@ -125,6 +124,7 @@ export async function applyParsedProfile(
     projects: (proj.data ?? []) as ExistingRow[],
     skills: (skills.data ?? []) as ExistingRow[],
     courses: (courses.data ?? []) as ExistingRow[],
+    leadership: [],
   };
 
   for (const { section, items } of sections) {

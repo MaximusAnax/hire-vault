@@ -3,15 +3,12 @@ import type { ParsedJobDescription } from "./schemas";
 
 export interface CandidateContext {
   target_roles?: string[] | null;
-  pitch?: string | null;
 }
 
 function candidateContextBlock(ctx?: CandidateContext | null): string {
-  const lines: string[] = [];
   const roles = (ctx?.target_roles ?? []).filter(Boolean);
-  if (roles.length) lines.push(`Target roles: ${roles.join(", ")}`);
-  if (ctx?.pitch?.trim()) lines.push(`Personal pitch: ${ctx.pitch.trim()}`);
-  return lines.length ? `\nCandidate context:\n${lines.join("\n")}\n` : "";
+  if (!roles.length) return "";
+  return `\nCandidate context:\nTarget roles: ${roles.join(", ")}\n`;
 }
 
 export interface ExperienceMatch {
@@ -80,13 +77,10 @@ export function scoreExperiencesAgainstJd(
 }
 
 export function computeAtsScore(
-  content: { summary?: string; experiences: { bullet_points: string[] }[] },
+  content: { experiences: { bullet_points: string[] }[] },
   jdKeywords: string[]
 ): { score: number; keywordGaps: string[]; density: Record<string, number> } {
-  const text = [
-    content.summary ?? "",
-    ...content.experiences.flatMap((e) => e.bullet_points),
-  ]
+  const text = content.experiences.flatMap((e) => e.bullet_points)
     .join(" ")
     .toLowerCase();
 

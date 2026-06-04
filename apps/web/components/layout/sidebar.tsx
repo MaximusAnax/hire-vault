@@ -9,8 +9,6 @@ import {
   FileText,
   LayoutDashboard,
   MessageSquare,
-  Mic,
-  Search,
   Settings,
   Sparkles,
   User,
@@ -25,10 +23,8 @@ const mainNav = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/applications", label: "Applications", icon: Briefcase },
-  { href: "/jobs", label: "Jobs", icon: Search },
   { href: "/resumes", label: "Resumes", icon: FileText },
   { href: "/interviews", label: "Interviews", icon: MessageSquare },
-  { href: "/mock", label: "Mock", icon: Mic },
 ];
 
 const bottomNav = [{ href: "/settings", label: "Settings", icon: Settings }];

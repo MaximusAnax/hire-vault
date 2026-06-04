@@ -93,7 +93,7 @@ Open [http://localhost:3000](http://localhost:3000). Sign in with Google at `/lo
 
 **Phase 3** — Job tracking: Kanban pipeline, job entry, analytics (Recharts), search/filter. [Report](reports/phase-3-dashboard.html) · [Decisions](docs/decisions/phase-3.md)
 
-**Phases 4–8** — Extension, resume tailoring, interview prep, mock interviews, coaching insights. [Report](reports/phase-4-8-complete.html) · [Decisions](docs/decisions/phase-4.md) … [phase-8.md](docs/decisions/phase-8.md)
+**Phases 4–8** — Extension, resume tailoring (LaTeX PDF), interview prep. Mock interviews and overview coaching insights were removed for a lean apply/prep loop. [Report](reports/phase-4-8-complete.html) · [Decisions](docs/decisions/phase-4.md) … [phase-8.md](docs/decisions/phase-8.md)
 
 ### Environment variables
 
@@ -102,5 +102,6 @@ Open [http://localhost:3000](http://localhost:3000). Sign in with Google at `/lo
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
 | `OPENAI_API_KEY` | No | JD parsing, question generation structure |
-| `ANTHROPIC_API_KEY` | No | Bullet rewrites, interview answers, mock feedback |
+| `ANTHROPIC_API_KEY` | No | Bullet rewrites, interview answers |
+| `LATEX_COMPILER` | No | Override path to `pdflatex` for resume PDF export |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes* | Extension capture API (*server only) |

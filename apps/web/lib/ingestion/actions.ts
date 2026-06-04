@@ -293,8 +293,8 @@ export async function getProfileValidation() {
   };
 
   const local = validateProfileLocally({
-    headline: profile.headline,
-    summary: profile.summary,
+    full_name: profile.full_name,
+    target_roles: profile.target_roles,
     experiences: (exp.data ?? []) as { bullet_points?: string[] }[],
     skills: (skills.data ?? []) as { name: string }[],
   });

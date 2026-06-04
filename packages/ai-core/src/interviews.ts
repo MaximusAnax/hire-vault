@@ -4,14 +4,12 @@ import type { QuestionCategory } from "./schemas";
 
 export interface InterviewCandidateContext {
   target_roles?: string[] | null;
-  pitch?: string | null;
 }
 
 function candidateContextBlock(ctx?: InterviewCandidateContext | null): string {
   const lines: string[] = [];
   const roles = (ctx?.target_roles ?? []).filter(Boolean);
   if (roles.length) lines.push(`Target roles: ${roles.join(", ")}`);
-  if (ctx?.pitch?.trim()) lines.push(`Personal pitch: ${ctx.pitch.trim()}`);
   return lines.length ? `\nCandidate context:\n${lines.join("\n")}\n` : "";
 }
 

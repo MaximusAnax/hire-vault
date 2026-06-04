@@ -36,8 +36,9 @@ export type MockSessionType = "behavioral" | "technical" | "mixed";
 export interface Profile {
   id: string;
   user_id: string;
+  full_name: string | null;
+  email: string | null;
   headline: string | null;
-  summary: string | null;
   location: string | null;
   phone: string | null;
   linkedin_url: string | null;
@@ -46,29 +47,23 @@ export interface Profile {
   raw_resume_data: Record<string, unknown> | null;
   source: ProfileSource;
   target_roles: string[];
-  pitch: string | null;
-  summary_stale: boolean;
-  summary_assembled_at: string | null;
+  technical_skills_tex: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export type SummarySnippetEntityType =
-  | "experience"
-  | "education"
-  | "project"
-  | "skill"
-  | "course";
-
-export interface ProfileSummarySnippet {
+export interface Leadership {
   id: string;
   profile_id: string;
-  entity_type: SummarySnippetEntityType;
-  entity_id: string;
-  snippet: string;
-  source_hash: string;
-  model: string;
-  generated_at: string;
+  organization: string;
+  title: string;
+  location: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+  bullet_points: string[];
+  source: ProfileSource;
+  source_hash: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -187,7 +182,8 @@ export type ProfileSection =
   | "education"
   | "projects"
   | "skills"
-  | "courses";
+  | "courses"
+  | "leadership";
 
 export type IngestionRunStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -314,17 +310,16 @@ export interface Database {
           updated_at?: string;
         }
       >;
-      jobs: TableDef<Job>;
-      applications: TableDef<Application>;
-      profile_summary_snippets: TableDef<
-        ProfileSummarySnippet,
-        Omit<ProfileSummarySnippet, "id" | "created_at" | "updated_at" | "generated_at"> & {
+      leadership: TableDef<
+        Leadership,
+        Omit<Leadership, "id" | "created_at" | "updated_at"> & {
           id?: string;
           created_at?: string;
           updated_at?: string;
-          generated_at?: string;
         }
       >;
+      jobs: TableDef<Job>;
+      applications: TableDef<Application>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

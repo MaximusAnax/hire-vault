@@ -4,9 +4,12 @@ import {
   deleteCourse,
   deleteEducation,
   deleteExperience,
+  deleteLeadership,
   deleteProject,
   deleteSkill,
 } from "@/lib/profile/actions";
+import { LeadershipRow } from "@/components/profile/leadership-row";
+import { AddLeadershipForm } from "@/components/profile/add-leadership-form";
 import { ProfileHeaderForm } from "@/components/profile/profile-header-form";
 import { AddExperienceForm } from "@/components/profile/add-experience-form";
 import { AddEducationForm } from "@/components/profile/add-education-form";
@@ -32,6 +35,7 @@ import type {
   Course,
   Education,
   Experience,
+  Leadership,
   Project,
   Skill,
 } from "@hirevault/types";
@@ -49,9 +53,10 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const profileId = profile.id;
 
-  const [exp, edu, proj, skills, courses] = await Promise.all([
+  const [exp, edu, lead, proj, skills, courses] = await Promise.all([
     supabase.from("experiences").select("*").eq("profile_id", profileId).order("start_date", { ascending: false }),
     supabase.from("education").select("*").eq("profile_id", profileId),
+    supabase.from("leadership").select("*").eq("profile_id", profileId).order("start_date", { ascending: false }),
     supabase.from("projects").select("*").eq("profile_id", profileId),
     supabase.from("skills").select("*").eq("profile_id", profileId),
     supabase.from("courses").select("*").eq("profile_id", profileId),
@@ -59,6 +64,7 @@ export default async function ProfilePage() {
 
   const experiences = (exp.data ?? []) as Experience[];
   const education = (edu.data ?? []) as Education[];
+  const leadershipList = (lead.data ?? []) as Leadership[];
   const projects = (proj.data ?? []) as Project[];
   const skillsList = (skills.data ?? []) as Skill[];
   const coursesList = (courses.data ?? []) as Course[];
@@ -82,6 +88,7 @@ export default async function ProfilePage() {
       <Tabs defaultValue="experiences">
         <TabsList>
           <TabsTrigger value="experiences">Experience</TabsTrigger>
+          <TabsTrigger value="leadership">Leadership</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
@@ -91,6 +98,25 @@ export default async function ProfilePage() {
         <TabsContent value="experiences" className="space-y-4">
           <ExperienceSection experiences={experiences} onDelete={deleteExperience} />
           <AddExperienceForm />
+        </TabsContent>
+
+        <TabsContent value="leadership" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Leadership</CardTitle>
+              <CardDescription>Clubs, teams, and volunteer roles (exported in LaTeX PDF)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {leadershipList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No leadership entries yet.</p>
+              ) : (
+                leadershipList.map((l) => (
+                  <LeadershipRow key={l.id} leadership={l} onDelete={deleteLeadership} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <AddLeadershipForm />
         </TabsContent>
 
         <TabsContent value="education" className="space-y-4">

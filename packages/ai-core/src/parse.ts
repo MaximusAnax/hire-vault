@@ -221,26 +221,24 @@ export function parseLinkedInJson(jsonText: string): {
 
 /** Rule-based validation when AI is unavailable */
 export function validateProfileLocally(profile: {
-  headline?: string | null;
-  summary?: string | null;
+  full_name?: string | null;
+  target_roles?: string[];
   experiences: { bullet_points?: string[] }[];
   skills: { name: string }[];
 }): ProfileValidation {
   const suggestions: ProfileValidation["suggestions"] = [];
-  if (!profile.headline?.trim()) {
+  if (!profile.full_name?.trim()) {
     suggestions.push({
-      field: "headline",
+      field: "full_name",
       severity: "warning",
-      message: "Add a professional headline.",
-      suggestion: "e.g. Software Engineer | Full-Stack",
+      message: "Add your full name for resume export.",
     });
   }
-  if (!profile.summary?.trim() || (profile.summary?.length ?? 0) < 80) {
+  if (!profile.target_roles?.length) {
     suggestions.push({
-      field: "summary",
-      severity: "warning",
-      message: "Summary is missing or short.",
-      suggestion: "Write 2–4 sentences highlighting your focus and impact.",
+      field: "target_roles",
+      severity: "info",
+      message: "Add target roles to improve tailoring context.",
     });
   }
   if (profile.experiences.length === 0) {

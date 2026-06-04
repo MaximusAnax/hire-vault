@@ -1,8 +1,13 @@
 import { ExtensionTokens } from "@/components/settings/extension-tokens";
+import { ClearUserDataCard } from "@/components/settings/clear-user-data-card";
 import { listExtensionTokens } from "@/lib/extension/actions";
+import { isDevDataResetAvailable } from "@/lib/dev/actions";
 
 export default async function SettingsPage() {
-  const tokens = await listExtensionTokens();
+  const [tokens, devReset] = await Promise.all([
+    listExtensionTokens(),
+    isDevDataResetAvailable(),
+  ]);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -15,12 +20,13 @@ export default async function SettingsPage() {
         </p>
       </div>
       <ExtensionTokens tokens={tokens} />
+      {devReset ? <ClearUserDataCard /> : null}
       <div className="text-sm text-muted-foreground space-y-1">
         <p>
           <strong>OPENAI_API_KEY</strong> — JD parsing, resume validation, question generation structure.
         </p>
         <p>
-          <strong>ANTHROPIC_API_KEY</strong> — Bullet rewrites, personalized answers, mock feedback.
+          <strong>ANTHROPIC_API_KEY</strong> — Bullet rewrites and personalized interview answers.
         </p>
         <p>
           <strong>SUPABASE_SERVICE_ROLE_KEY</strong> — Extension capture API only (server-side).

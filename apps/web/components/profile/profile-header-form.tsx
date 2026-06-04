@@ -1,15 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Plus, RefreshCw, Sparkles, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import type { Profile } from "@hirevault/types";
-import {
-  regenerateProfileSummary,
-  updateProfile,
-} from "@/lib/profile/actions";
+import { updateProfile } from "@/lib/profile/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ROLE_SUGGESTIONS = [
@@ -20,10 +18,12 @@ const ROLE_SUGGESTIONS = [
   "Tech Consulting",
 ] as const;
 
+const DEFAULT_SKILLS_TEX = String.raw`     \textbf{Machine Learning}{: Deep Algorithmic Knowledge of Decision Trees, K-Mean, Neural Networks.}\\
+     \textbf{Languages, Libraries, \& Frameworks}{: PyTorch, TensorFlow, Python, SQL, C++.}\\
+     \textbf{Data Infrastructure}{: AWS, PostgreSQL, Docker, CI/CD Pipelines.}`;
+
 export function ProfileHeaderForm({ profile }: { profile: Profile }) {
   const [pending, startTransition] = useTransition();
-  const [regenPending, startRegen] = useTransition();
-  const [regenError, setRegenError] = useState<string | null>(null);
   const [roles, setRoles] = useState<string[]>(() => profile.target_roles ?? []);
   const [roleDraft, setRoleDraft] = useState("");
 
@@ -49,20 +49,7 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
       <CardHeader>
         <CardTitle>Profile details</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <SummaryPanel
-          profile={profile}
-          pending={regenPending}
-          error={regenError}
-          onRegenerate={() => {
-            setRegenError(null);
-            startRegen(async () => {
-              const result = await regenerateProfileSummary();
-              if (result?.error) setRegenError(result.error);
-            });
-          }}
-        />
-
+      <CardContent>
         <form
           action={(fd) => {
             fd.set("target_roles", roles.join(","));
@@ -71,10 +58,29 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
           className="grid gap-4 sm:grid-cols-2"
         >
           <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="full_name">Full name (resume heading)</Label>
+            <Input
+              id="full_name"
+              name="full_name"
+              defaultValue={profile.full_name ?? ""}
+              placeholder="Your name as it should appear on the PDF"
+            />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              defaultValue={profile.email ?? ""}
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
             <Label>Target roles</Label>
             <p className="text-xs text-muted-foreground">
-              Pick the roles you&apos;re targeting. These feed every downstream
-              tailoring and interview prompt.
+              Roles you&apos;re targeting — used for resume tailoring and interview prep.
             </p>
             <div className="flex flex-wrap gap-2 rounded-md border border-input bg-transparent p-2 min-h-9">
               {roles.length === 0 && (
@@ -122,9 +128,7 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
             </div>
             {suggestions.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                <span className="text-xs text-muted-foreground self-center">
-                  Suggestions:
-                </span>
+                <span className="text-xs text-muted-foreground self-center">Suggestions:</span>
                 {suggestions.map((s) => (
                   <button
                     type="button"
@@ -140,12 +144,18 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="pitch">Personal pitch</Label>
-            <Input
-              id="pitch"
-              name="pitch"
-              defaultValue={profile.pitch ?? ""}
-              placeholder="One sentence that captures your professional thesis"
+            <Label htmlFor="technical_skills_tex">Technical skills (LaTeX)</Label>
+            <p className="text-xs text-muted-foreground">
+              Lines inside the resume Technical Skills section. Use{" "}
+              <code className="text-[11px]">\textbf{"{Category}"}</code> and{" "}
+              <code className="text-[11px]">{"{skills}"}</code> format from your template.
+            </p>
+            <Textarea
+              id="technical_skills_tex"
+              name="technical_skills_tex"
+              rows={5}
+              className="font-mono text-xs"
+              defaultValue={profile.technical_skills_tex?.trim() || DEFAULT_SKILLS_TEX}
             />
           </div>
 
@@ -182,8 +192,6 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
             />
           </div>
 
-          {/* hidden field carries the chip array as comma-joined text so we
-              can stay compatible with the existing FormData server action. */}
           <input type="hidden" name="target_roles" value={roles.join(",")} />
 
           <Button type="submit" disabled={pending} className="sm:col-span-2 w-fit">
@@ -192,63 +200,5 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-function SummaryPanel({
-  profile,
-  pending,
-  error,
-  onRegenerate,
-}: {
-  profile: Profile;
-  pending: boolean;
-  error: string | null;
-  onRegenerate: () => void;
-}) {
-  const assembledLabel = profile.summary_assembled_at
-    ? new Date(profile.summary_assembled_at).toLocaleString()
-    : null;
-
-  return (
-    <div className="rounded-md border border-border bg-muted/30 p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <p className="font-medium text-sm">Profile summary</p>
-          {profile.summary_stale && (
-            <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-              Profile changed since last assembly
-            </span>
-          )}
-        </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={onRegenerate}
-          disabled={pending}
-        >
-          <RefreshCw className={`h-4 w-4 mr-1 ${pending ? "animate-spin" : ""}`} />
-          {pending ? "Regenerating…" : "Regenerate summary"}
-        </Button>
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {profile.summary?.trim() ? (
-          <p className="text-foreground/90 leading-relaxed">{profile.summary}</p>
-        ) : (
-          <p className="italic">
-            No summary yet. Add experiences, projects, or courses and click
-            Regenerate to assemble one.
-          </p>
-        )}
-      </div>
-      {assembledLabel && (
-        <p className="text-[11px] text-muted-foreground">
-          Last assembled {assembledLabel}
-        </p>
-      )}
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
   );
 }

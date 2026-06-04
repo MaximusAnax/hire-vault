@@ -114,7 +114,6 @@ export type QuestionCategory = z.infer<typeof questionCategorySchema>;
 
 export const resumeContentSchema = z.object({
   headline: z.string().optional(),
-  summary: z.string().optional(),
   experiences: z.array(
     z.object({
       id: z.string().optional(),

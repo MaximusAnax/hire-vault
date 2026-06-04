@@ -25,7 +25,6 @@ const navItems = [
   { label: "Profile", href: "/profile", icon: User },
   { label: "Import profile data", href: "/profile/import", icon: User },
   { label: "Applications", href: "/applications", icon: Briefcase },
-  { label: "Jobs", href: "/jobs", icon: Search },
   { label: "Resumes", href: "/resumes", icon: FileText },
   { label: "Interviews", href: "/interviews", icon: MessageSquare },
   { label: "Settings", href: "/settings", icon: Settings },
