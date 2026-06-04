@@ -6,6 +6,21 @@ export type SkillCategory = "language" | "framework" | "tool" | "soft_skill";
 
 export type JobType = "full_time" | "internship" | "contract";
 
+export type RoleSeason = "spring" | "summer" | "fall" | "winter";
+
+export const ROLE_SEASONS: readonly RoleSeason[] = [
+  "spring",
+  "summer",
+  "fall",
+  "winter",
+] as const;
+
+export const JOB_TYPE_LABELS: Record<JobType, string> = {
+  full_time: "Full-time",
+  internship: "Internship",
+  contract: "Contract",
+};
+
 export type ApplicationStatus =
   | "saved"
   | "applied"
@@ -158,6 +173,10 @@ export interface Job {
   tech_stack: string[];
   salary_range: string | null;
   job_type: JobType | null;
+  /** Cohort season for intern/new-grad roles (e.g. fall for Fall '26). */
+  role_season: RoleSeason | null;
+  /** Cohort year (e.g. 2026). */
+  role_year: number | null;
   scraped_at: string | null;
   created_at: string;
   updated_at: string;

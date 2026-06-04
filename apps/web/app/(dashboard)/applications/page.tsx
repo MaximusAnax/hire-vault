@@ -5,7 +5,7 @@ import { ApplicationFilters } from "@/components/applications/application-filter
 import { AddApplicationForm } from "@/components/applications/add-application-form";
 import { PipelineAnalytics } from "@/components/applications/pipeline-analytics";
 import { getApplicationStats } from "@/lib/applications/queries";
-import type { ApplicationStatus } from "@hirevault/types";
+import type { ApplicationStatus, RoleSeason } from "@hirevault/types";
 
 export default async function ApplicationsPage({
   searchParams,
@@ -17,8 +17,20 @@ export default async function ApplicationsPage({
     status: (params.status as ApplicationStatus | "all") ?? "all",
     company: params.company,
     priority: params.priority ? Number(params.priority) : undefined,
+    priorityMin: params.priorityMin ? Number(params.priorityMin) : undefined,
     jobType: params.jobType,
-    sort: (params.sort as "updated" | "applied" | "priority" | "company") ?? "updated",
+    roleSeason: (params.roleSeason as RoleSeason | "all") ?? "all",
+    roleYear: params.roleYear ? Number(params.roleYear) : undefined,
+    location: params.location,
+    activeOnly: params.active === "1",
+    remoteOnly: params.remote === "1",
+    sort:
+      (params.sort as
+        | "updated"
+        | "applied"
+        | "priority"
+        | "company"
+        | "role_timing") ?? "updated",
   };
 
   const [applications, stats] = await Promise.all([
@@ -31,7 +43,7 @@ export default async function ApplicationsPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Applications</h1>
         <p className="text-muted-foreground">
-          Kanban pipeline — drag cards between columns or use the status dropdown.
+          Kanban pipeline — click a card to edit, filter by cohort or priority, drag by the handle.
         </p>
       </div>
 

@@ -8,7 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StarRating } from "@/components/ui/star-rating";
+import { ChipEditor } from "@/components/applications/chip-editor";
+import { JobMetaBadges } from "@/components/applications/job-meta-badges";
+import {
+  COHORT_YEAR_OPTIONS,
+  ROLE_SEASON_LABELS,
+  resolveRoleTiming,
+} from "@/lib/applications/role-timing";
 import type { ParseAndPreviewJobResult } from "@/lib/applications/actions";
+import type { JobType, RoleSeason } from "@hirevault/types";
+import { ROLE_SEASONS } from "@hirevault/types";
 
 interface JobPreviewCardProps {
   preview: ParseAndPreviewJobResult;
@@ -21,6 +30,8 @@ interface DraftState {
   company: string;
   url: string;
   job_type: string;
+  role_season: RoleSeason | "";
+  role_year: string;
   status: string;
   priority: number | null;
   locations: string[];
@@ -31,11 +42,18 @@ interface DraftState {
 }
 
 function fromPreview(p: ParseAndPreviewJobResult): DraftState {
-  return {
+  const timing = resolveRoleTiming({
     title: p.parsed.title ?? "",
+    role_season: (p.parsed.role_season as RoleSeason | undefined) ?? null,
+    role_year: p.parsed.role_year ?? null,
+  });
+  return {
+    title: timing.title,
     company: p.parsed.company ?? "",
     url: p.url ?? "",
     job_type: p.parsed.job_type ?? "",
+    role_season: timing.role_season ?? "",
+    role_year: timing.role_year != null ? String(timing.role_year) : "",
     status: "saved",
     priority: null,
     locations: p.locations,
@@ -44,69 +62,6 @@ function fromPreview(p: ParseAndPreviewJobResult): DraftState {
     preferred_qualifications: p.parsed.preferred_qualifications ?? [],
     description_raw: p.description_raw,
   };
-}
-
-function ChipEditor({
-  label,
-  values,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  values: string[];
-  onChange: (next: string[]) => void;
-  placeholder?: string;
-}) {
-  const [draft, setDraft] = useState("");
-  const commitDraft = () => {
-    const trimmed = draft.trim();
-    if (!trimmed) return;
-    // Allow paste-bulk: comma or newline separated.
-    const parts = trimmed
-      .split(/[,\n]/g)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !values.includes(s));
-    if (parts.length) onChange([...values, ...parts]);
-    setDraft("");
-  };
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
-      <div className="flex flex-wrap gap-1.5">
-        {values.map((v, i) => (
-          <span
-            key={`${v}-${i}`}
-            className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-          >
-            {v}
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => onChange(values.filter((_, idx) => idx !== i))}
-              aria-label={`Remove ${v}`}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <Input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === ",") {
-              e.preventDefault();
-              commitDraft();
-            } else if (e.key === "Backspace" && !draft && values.length > 0) {
-              onChange(values.slice(0, -1));
-            }
-          }}
-          onBlur={commitDraft}
-          placeholder={placeholder ?? "Add and press Enter"}
-          className="h-7 w-44 text-xs"
-        />
-      </div>
-    </div>
-  );
 }
 
 export function JobPreviewCard({ preview, onCancel, onSaved }: JobPreviewCardProps) {
@@ -123,6 +78,8 @@ export function JobPreviewCard({ preview, onCancel, onSaved }: JobPreviewCardPro
       for (const loc of draft.locations) fd.append("locations", loc);
       if (draft.url) fd.set("url", draft.url);
       if (draft.job_type) fd.set("job_type", draft.job_type);
+      if (draft.role_season) fd.set("role_season", draft.role_season);
+      if (draft.role_year) fd.set("role_year", draft.role_year);
       fd.set("status", draft.status);
       if (draft.priority != null) fd.set("priority", String(draft.priority));
       fd.set("description_raw", draft.description_raw);
@@ -193,7 +150,7 @@ export function JobPreviewCard({ preview, onCancel, onSaved }: JobPreviewCardPro
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Job type</Label>
+            <Label className="text-xs">Role type</Label>
             <select
               className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
               value={draft.job_type}
@@ -204,6 +161,45 @@ export function JobPreviewCard({ preview, onCancel, onSaved }: JobPreviewCardPro
               <option value="internship">Internship</option>
               <option value="contract">Contract</option>
             </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cohort season</Label>
+            <select
+              className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+              value={draft.role_season}
+              onChange={(e) =>
+                setDraft({ ...draft, role_season: e.target.value as DraftState["role_season"] })
+              }
+            >
+              <option value="">—</option>
+              {ROLE_SEASONS.map((s) => (
+                <option key={s} value={s}>
+                  {ROLE_SEASON_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cohort year</Label>
+            <select
+              className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+              value={draft.role_year}
+              onChange={(e) => setDraft({ ...draft, role_year: e.target.value })}
+            >
+              <option value="">—</option>
+              {COHORT_YEAR_OPTIONS.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <JobMetaBadges
+              job_type={(draft.job_type as JobType) || null}
+              role_season={draft.role_season || null}
+              role_year={draft.role_year ? Number(draft.role_year) : null}
+            />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label className="text-xs">Priority</Label>

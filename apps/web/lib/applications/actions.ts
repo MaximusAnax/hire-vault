@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { parseJobDescription, type ParsedJobDescription } from "@hirevault/ai-core";
 import { createClient } from "@/lib/supabase/server";
-import type { ApplicationStatus } from "@hirevault/types";
+import type { ApplicationStatus, JobType } from "@hirevault/types";
 import { fetchJobFromUrl, isLikelyUrl } from "./scrape";
 import { normalizeLocations } from "./locations";
+import { resolveRoleTiming } from "./role-timing";
 
 function revalidateApps() {
   revalidatePath("/applications");
@@ -68,11 +69,28 @@ export async function createJob(formData: FormData) {
   // First chip mirrors into legacy `location` for backward compatibility.
   const primaryLocation = locations[0] ?? null;
 
+  const rawTitle = (formData.get("title") as string) || parsed?.title || "Untitled role";
+  const timing = resolveRoleTiming({
+    title: rawTitle,
+    role_season:
+      (formData.get("role_season") as string) ||
+      (parsed?.role_season as string | undefined) ||
+      null,
+    role_year:
+      formData.get("role_year") != null && formData.get("role_year") !== ""
+        ? (formData.get("role_year") as string)
+        : (parsed?.role_year ?? null),
+  });
+  const jobType =
+    (formData.get("job_type") as JobType) ||
+    parsed?.job_type ||
+    (/\bintern(ship)?\b/i.test(timing.title) ? "internship" : null);
+
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
       user_id: user.id,
-      title: (formData.get("title") as string) || parsed?.title || "Untitled role",
+      title: timing.title,
       company: (formData.get("company") as string) || parsed?.company || "Unknown company",
       location: primaryLocation,
       locations,
@@ -83,7 +101,9 @@ export async function createJob(formData: FormData) {
       required_qualifications,
       preferred_qualifications,
       salary_range: parsed?.salary_range ?? null,
-      job_type: (formData.get("job_type") as "full_time" | "internship" | "contract") || parsed?.job_type || null,
+      job_type: jobType,
+      role_season: timing.role_season,
+      role_year: timing.role_year,
     })
     .select("id")
     .single();
@@ -282,6 +302,107 @@ export async function updateApplicationStatus(
     .eq("id", applicationId);
 
   if (error) return { error: error.message };
+  revalidateApps();
+  return { success: true };
+}
+
+export async function updateJobBasics(
+  jobId: string,
+  fields: {
+    title: string;
+    company: string;
+    url?: string | null;
+    locations: string[];
+    job_type?: JobType | null;
+    role_season?: string | null;
+    role_year?: number | string | null;
+  }
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const locations = normalizeLocations(fields.locations);
+  const timing = resolveRoleTiming({
+    title: fields.title.trim() || "Untitled role",
+    role_season: fields.role_season ?? null,
+    role_year: fields.role_year ?? null,
+  });
+  const company = fields.company.trim() || "Unknown company";
+  const url = (fields.url ?? "").trim() || null;
+
+  const { error } = await supabase
+    .from("jobs")
+    .update({
+      title: timing.title,
+      company,
+      url,
+      locations,
+      location: locations[0] ?? null,
+      job_type: fields.job_type ?? null,
+      role_season: timing.role_season,
+      role_year: timing.role_year,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+  revalidateApps();
+  return { success: true };
+}
+
+export async function updateApplicationPriority(
+  applicationId: string,
+  priority: number | null
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("applications")
+    .update({
+      priority,
+      last_updated: new Date().toISOString(),
+    })
+    .eq("id", applicationId);
+
+  if (error) return { error: error.message };
+  revalidateApps();
+  return { success: true };
+}
+
+export async function removeApplicationAndJob(applicationId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: app } = await supabase
+    .from("applications")
+    .select("job_id")
+    .eq("id", applicationId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!app) return { error: "Application not found" };
+
+  const { error: appError } = await supabase
+    .from("applications")
+    .delete()
+    .eq("id", applicationId);
+  if (appError) return { error: appError.message };
+
+  if (app.job_id) {
+    const { error: jobError } = await supabase
+      .from("jobs")
+      .delete()
+      .eq("id", app.job_id)
+      .eq("user_id", user.id);
+    if (jobError) return { error: jobError.message };
+  }
+
   revalidateApps();
   return { success: true };
 }

@@ -159,7 +159,7 @@ export function AddApplicationForm() {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Job type</Label>
+                  <Label>Role type</Label>
                   <select
                     name="job_type"
                     className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
@@ -168,6 +168,33 @@ export function AddApplicationForm() {
                     <option value="full_time">Full-time</option>
                     <option value="internship">Internship</option>
                     <option value="contract">Contract</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Cohort season</Label>
+                  <select
+                    name="role_season"
+                    className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                  >
+                    <option value="">—</option>
+                    <option value="spring">Spring</option>
+                    <option value="summer">Summer</option>
+                    <option value="fall">Fall</option>
+                    <option value="winter">Winter</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Cohort year</Label>
+                  <select
+                    name="role_year"
+                    className="w-full h-9 rounded-md border border-border bg-background px-2 text-sm"
+                  >
+                    <option value="">—</option>
+                    {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                      <option key={y} value={String(y)}>
+                        {y}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-2 sm:col-span-2">

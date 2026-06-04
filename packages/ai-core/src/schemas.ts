@@ -100,6 +100,8 @@ export const parsedJobDescriptionSchema = z.object({
   tech_stack: z.array(z.string()).optional(),
   salary_range: z.string().nullable().optional(),
   job_type: z.enum(["full_time", "internship", "contract"]).nullable().optional(),
+  role_season: z.enum(["spring", "summer", "fall", "winter"]).nullable().optional(),
+  role_year: z.number().int().min(2000).max(2100).nullable().optional(),
 });
 
 export type ParsedJobDescription = z.infer<typeof parsedJobDescriptionSchema>;

@@ -19,7 +19,7 @@ ${text.slice(0, 28000)}
 export const JD_PARSE_SYSTEM = `Extract structured job posting data. Return JSON only.`;
 
 export const JD_PARSE_USER = (text: string) =>
-  `Parse this job description. Return JSON with keys: title, company, location, locations, required_qualifications[], preferred_qualifications[], tech_stack[], salary_range, job_type (full_time|internship|contract).
+  `Parse this job description. Return JSON with keys: title, company, location, locations, required_qualifications[], preferred_qualifications[], tech_stack[], salary_range, job_type (full_time|internship|contract), role_season (spring|summer|fall|winter), role_year (e.g. 2026 for Fall 2026 cohorts).
 
 Rules for locations:
 - "locations" MUST be an array of strings. Include every distinct location mentioned (cities, regions, "Remote", "Hybrid – San Francisco", etc.).
