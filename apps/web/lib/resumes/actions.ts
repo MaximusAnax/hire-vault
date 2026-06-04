@@ -245,3 +245,27 @@ export async function deleteTailoredResume(resumeId: string) {
   revalidatePath("/resumes");
   return { success: true };
 }
+
+export async function getResumePdfDownloadUrl(resumeId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: row } = await supabase
+    .from("tailored_resumes")
+    .select("pdf_storage_path, user_id")
+    .eq("id", resumeId)
+    .single();
+
+  if (!row?.pdf_storage_path) return { error: "Export a PDF first" };
+  if (row.user_id && row.user_id !== user.id) return { error: "Not authorized" };
+
+  const { data, error } = await supabase.storage
+    .from("resumes")
+    .createSignedUrl(row.pdf_storage_path, 120);
+
+  if (error || !data?.signedUrl) return { error: error?.message ?? "Could not create download link" };
+  return { url: data.signedUrl };
+}
