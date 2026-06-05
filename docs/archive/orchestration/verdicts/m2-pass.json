@@ -1,0 +1,15 @@
+{
+  "verdict": "PASS",
+  "milestone": "m2",
+  "iteration": 1,
+  "gates": { "typecheck": true, "lint": true, "test": true, "build": true },
+  "acceptanceChecks": [
+    { "id": "m2-gates", "status": "pass", "evidence": "pnpm quality:check" },
+    { "id": "m2-scrape-tests", "status": "pass", "evidence": "scrape.test.ts including LinkedIn blocked hint" },
+    { "id": "m2-preview-save", "status": "pass", "evidence": "createJobAndApplicationFromPreview + skip_ai_parse" },
+    { "id": "m2-locations-dedupe", "status": "pass", "evidence": "locations.test.ts" },
+    { "id": "m2-extension-build", "status": "pass", "evidence": "pnpm --filter @hirevault/extension build" },
+    { "id": "m2-capture-api", "status": "pass", "evidence": "api/extension/capture locations[]" }
+  ],
+  "findings": []
+}

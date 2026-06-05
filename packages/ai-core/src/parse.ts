@@ -17,6 +17,7 @@ import {
   VALIDATION_SYSTEM,
   VALIDATION_USER,
 } from "./prompts";
+import { polishBullets } from "./write";
 
 export function isOpenAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
@@ -76,10 +77,80 @@ export async function parseResumeText(text: string): Promise<{
     if (!parsed.success) {
       return { data: null, error: parsed.error.message };
     }
-    return { data: parsed.data };
+    const polished = await polishParsedResumeBullets(parsed.data);
+    return { data: polished };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Parse failed" };
   }
+}
+
+/**
+ * Run every experience/project bullet through `polishBullets`. Import-time
+ * only — manual entries are NOT polished (see plan: A4).
+ */
+export async function polishParsedResumeBullets(
+  resume: ParsedResume
+): Promise<ParsedResume> {
+  const experiences = await Promise.all(
+    (resume.experiences ?? []).map(async (exp) => {
+      const bullets = exp.bullet_points ?? [];
+      if (bullets.length === 0) return exp;
+      const result = await polishBullets(bullets, exp.title);
+      return { ...exp, bullet_points: result.bullets };
+    })
+  );
+  const projects = await Promise.all(
+    (resume.projects ?? []).map(async (proj) => {
+      const bullets = proj.bullet_points ?? [];
+      if (bullets.length === 0) return proj;
+      const result = await polishBullets(bullets, proj.name);
+      return { ...proj, bullet_points: result.bullets };
+    })
+  );
+  const leadership = await Promise.all(
+    (resume.leadership ?? []).map(async (lead) => {
+      const bullets = lead.bullet_points ?? [];
+      if (bullets.length === 0) return lead;
+      const result = await polishBullets(bullets, lead.title);
+      return { ...lead, bullet_points: result.bullets };
+    })
+  );
+  return {
+    ...resume,
+    experiences: resume.experiences ? experiences : resume.experiences,
+    projects: resume.projects ? projects : resume.projects,
+    leadership: resume.leadership ? leadership : resume.leadership,
+  };
+}
+
+/**
+ * Polish bullets on a LinkedIn import payload. Same rules as resume parse:
+ * import-time only. Skills/education/courses have no bullets so we leave them.
+ */
+export async function polishLinkedInImportBullets(
+  data: LinkedInImport
+): Promise<LinkedInImport> {
+  const experiences = await Promise.all(
+    (data.experiences ?? []).map(async (exp) => {
+      const bullets = exp.bullet_points ?? [];
+      if (bullets.length === 0) return exp;
+      const result = await polishBullets(bullets, exp.title);
+      return { ...exp, bullet_points: result.bullets };
+    })
+  );
+  const projects = await Promise.all(
+    (data.projects ?? []).map(async (proj) => {
+      const bullets = proj.bullet_points ?? [];
+      if (bullets.length === 0) return proj;
+      const result = await polishBullets(bullets, proj.name);
+      return { ...proj, bullet_points: result.bullets };
+    })
+  );
+  return {
+    ...data,
+    experiences: data.experiences ? experiences : data.experiences,
+    projects: data.projects ? projects : data.projects,
+  };
 }
 
 export async function parseJobDescription(text: string): Promise<{
@@ -159,26 +230,24 @@ export function parseLinkedInJson(jsonText: string): {
 
 /** Rule-based validation when AI is unavailable */
 export function validateProfileLocally(profile: {
-  headline?: string | null;
-  summary?: string | null;
+  full_name?: string | null;
+  target_roles?: string[];
   experiences: { bullet_points?: string[] }[];
   skills: { name: string }[];
 }): ProfileValidation {
   const suggestions: ProfileValidation["suggestions"] = [];
-  if (!profile.headline?.trim()) {
+  if (!profile.full_name?.trim()) {
     suggestions.push({
-      field: "headline",
+      field: "full_name",
       severity: "warning",
-      message: "Add a professional headline.",
-      suggestion: "e.g. Software Engineer | Full-Stack",
+      message: "Add your full name for resume export.",
     });
   }
-  if (!profile.summary?.trim() || (profile.summary?.length ?? 0) < 80) {
+  if (!profile.target_roles?.length) {
     suggestions.push({
-      field: "summary",
-      severity: "warning",
-      message: "Summary is missing or short.",
-      suggestion: "Write 2–4 sentences highlighting your focus and impact.",
+      field: "target_roles",
+      severity: "info",
+      message: "Add target roles to improve tailoring context.",
     });
   }
   if (profile.experiences.length === 0) {

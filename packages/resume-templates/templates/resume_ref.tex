@@ -1,0 +1,228 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+ \renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-.8in}
+\addtolength{\evensidemargin}{-.8in}
+\addtolength{\textwidth}{1.5in}
+\addtolength{\topmargin}{-.7in}
+\addtolength{\textheight}{2in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-10pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+%----------HEADING----------
+% \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+%   \textbf{\href{http://sourabhbajaj.com/}{\Large Sourabh Bajaj}} & Email : \href{mailto:sourabh@sourabhbajaj.com}{sourabh@sourabhbajaj.com}\\
+%   \href{http://sourabhbajaj.com/}{http://www.sourabhbajaj.com} & Mobile : +1-123-456-7890 \\
+% \end{tabular*}
+
+\begin{center}
+    \textbf{\Huge \scshape Abdoul Ndiongue} \\ \vspace{1pt}
+    \small 929-645-4561 $|$ \href{mailto: andiongu@andrew.cmu.edu}{\underline{andiongu@andrew.cmu.edu}} $|$ 
+    \href{https://www.linkedin.com/in/abdoulndiongue/}{\underline{linkedin.com/in/abdoulndiongue}} $|$
+    \href{https://github.com/MaximusAnax}{\underline{github.com/MaximusAnax}}
+\end{center}
+
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Carnegie Mellon University}{Pittsburgh, PA}
+      {BS in Artificial Intelligence}{Expected Graduation: May 2028}
+      \resumeItem{Relevant Coursework: Intro to Machine Learning(10301), Generative Artificial Intelligence(10423), Autonomous Agents(15482), Parallel/Sequential Data Structures \& Algorithms(15210), Intro to Computer Systems(15213) \\
+      Awards: Ron Brown Rales Scholar, Carnegie Mellon Tartan Scholar}
+  \resumeSubHeadingListEnd
+
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Student Researcher}{May 2026 -- Present}
+      {Machine Learning Department – CMU}{Pittsburgh, PA}
+      \resumeItemListStart
+        \resumeItem{\textbf{Architecting a high-efficiency agent loop and harness design for edge-compute VLMs}, enabling autonomous computer-use capabilities from pixel-only observations without relying on frontier-scale models.}
+        \resumeItem{\textbf{Pioneering an optimized training framework designed to bridge the capability gap between small models and massive cloud architectures}, proving that algorithmic efficiency can replicate frontier-scale performance.}
+        \resumeItem{\textbf{Unlocking the potential for private, offline, and localized agent autonomy}, aiming to democratize AI agent deployment and drastically reduce infrastructure costs for low-resource environments.}
+        
+      \resumeItemListEnd
+      
+     \resumeSubheading
+      {Software Engineer Intern}{May 2025 -- August 2025}
+      {Microsoft – Xbox, PC and Console Engagement Team}{Redmond, WA}
+      \resumeItemListStart
+        \resumeItem{\textbf{Engineered a churn-prediction system} using Gradient Boosted Decision Trees (XGBoost) to analyze 15M+ user sessions, identifying high-risk churn patterns with a projected retention impact of 1.8M users annually.}
+        \resumeItem{\textbf{Developed and integrated a real-time inference engine} into the Xbox PC app using React and Python, enabling the dynamic delivery of personalized engagement content based on live user behavior metrics.}
+        \resumeItem{\textbf{Optimized model performance} by performing extensive feature selection and hyperparameter tuning, achieving an approximate 4.7\% improvement in churn reduction metrics through rigorous A/B testing and simulation.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Machine Learning Engineer Intern}{May 2024 -- August 2024}
+      {Success Academy Charter Schools}{Manhattan, NY}
+      \resumeItemListStart
+        \resumeItem{\textbf{Developed automated feature engineering pipeline} in Python to facilitate rapid model training, streamlining the ingestion of raw data into AWS Redshift and reducing data preparation latency by 100+ engineering hours}
+        \resumeItem{\textbf{Implemented custom Convex Hull-based heuristic for spatial optimization}, utilizing computational geometry to model optimal real estate expansion zones, which enhanced predictive accuracy for location selection by 35\%.}
+        \resumeItem{\textbf{Built high-performance data preprocessing pipeline on AWS} (S3, Redshift) that reduced processing time by 80\% through vectorization and parallel processing, enabling faster model training cycles.}
+        
+      \resumeItemListEnd
+
+      
+% -----------Multiple Positions Heading-----------
+%    \resumeSubSubheading
+%     {Software Engineer I}{Oct 2014 - Sep 2016}
+%     \resumeItemListStart
+%        \resumeItem{Apache Beam}
+%          {Apache Beam is a unified model for defining both batch and streaming data-parallel processing pipelines}
+%     \resumeItemListEnd
+%    \resumeSubHeadingListEnd
+%-------------------------------------------
+
+  \resumeSubHeadingListEnd
+
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Machine Learning}{: Deep Algorithmic Knowledge of Decision Trees, K-Mean, Neural Networks(Convolutional/Recurrent), Deep Learning, Reinforcement Learning.}\\
+     \textbf{Languages, Libraries, \& Frameworks}{: PyTorch, TensorFlow, OpenCV, Hugging Face, LangChain, Sklearn, Python, SQL, C++, NumPy, SciPy.}\\
+     \textbf{Data Infrastructure}{: AWS(SageMaker,Redshift,S3), PostgreSQL, MongoDB, Docker, CI/CD Pipelines, Vectorization, Parallel Processing.}\\
+    }}
+ \end{itemize}
+
+%-----------PROJECTS-----------
+\iffalse
+\section{Projects}
+    \resumeSubHeadingListStart
+     \resumeSubheading{Regime-Switching Portfolio Optimizer}{November 2024 -- Present}{Python, Pandas, NumPy, Scikit-learn, SciPy, Matplotlib}{}
+    \resumeItemListStart
+        \resumeItem{\textbf{Developed an unsupervised ML pipeline} using Hidden Markov Models (HMM) to identify latent market regimes (Bull vs. Bear) and drive dynamic asset allocation.}
+        \resumeItem{\textbf{Engineered state-dependent features}, utilizing rolling volatility and cross-sectional returns to train Gaussian HMMs for real-time regime classification.}
+        \resumeItem{\textbf{Implemented probabilistic weight blending} to smoothly transition between Sharpe-maximizing and defensive portfolios, reducing turnover and transaction costs.}
+        \resumeItem{\textbf{Mitigated estimation error} by integrating Ledoit-Wolf covariance shrinkage, improving the numerical stability and out-of-sample robustness of the optimizer.}
+        \resumeItem{\textbf{Validated strategy through rigorous walk-forward backtesting}, achieving 0.51 Sharpe ratio vs. 0.33 for equal-weight benchmark over x-year period.}
+    \resumeItemListEnd
+    \resumeSubHeadingListEnd
+\fi
+    %-----------SKILLS-----------
+
+\section{Leadership}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Inter fraternity Council}{November 2025 -- Present}
+      {President}{Pittsburgh, PA}
+      \resumeItemListStart
+        \resumeItem{\textbf{Executive Governance:} Spearheaded the executive board of the Interfraternity Council, governing 8 active chapters and commanding an annual operating budget of \$10,000+ to support campus-wide Greek life initiatives.}
+        \resumeItem{\textbf{University Liaison}: Acted as primary intermediary between the Greek community, CMU administration (including the Dean of Students), and the Pittsburgh municipality to advocate for student housing, safety, and philanthropic initiatives.} 
+        \resumeItem{\textbf{Crisis Leadership}: Formulated and executed an agile crisis-response framework during high-stakes university investigations, protecting organizational longevity while upholding strict community standards.}
+ 
+      \resumeItemListEnd
+
+       \resumeSubheading
+      {ColorStack}{August 2023 -- Present}
+      {Executive Board}{Pittsburgh, PA}
+      \resumeItemListStart
+        \resumeItem{\textbf{Community Growth}: Co-engineered the strategic growth of the CMU ColorStack chapter, expanding active membership by 70\% to foster a robust, supportive ecosystem for Black and Latinx computer science and engineering students.}
+        %\resumeItem{DESCRIPTION 3}
+ 
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+\end{document}
+%-------------------------------------------
+\end{document}
+

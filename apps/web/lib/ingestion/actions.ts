@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   parseResumeText,
   parseLinkedInJson,
+  polishLinkedInImportBullets,
   validateProfileData,
   validateProfileLocally,
 } from "@hirevault/ai-core";
@@ -11,6 +12,11 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfileId, getProfileForUser } from "@/lib/profile/get-profile";
 import { extractResumeText } from "./extract-text";
 import { applyParsedProfile } from "./apply-parsed";
+import {
+  countImportSections,
+  normalizeParsedResume,
+  normalizeParsedResumeFromText,
+} from "./normalize-parsed-resume";
 import type { DedupResolution, ProfileSection } from "@hirevault/types";
 
 function revalidateIngestion() {
@@ -71,24 +77,38 @@ export async function uploadAndParseResume(formData: FormData) {
     return { error: extractError ?? "Could not extract text from file" };
   }
 
-  const { data: parsed, error: parseError, degraded } = await parseResumeText(text);
-  if (!parsed) {
+  const { data: parsedAi, error: parseError, degraded } = await parseResumeText(text);
+
+  const normalized = parsedAi
+    ? normalizeParsedResume(text, parsedAi)
+    : normalizeParsedResumeFromText(text);
+
+  const hasContent =
+    (normalized.experiences?.length ?? 0) > 0 ||
+    (normalized.education?.length ?? 0) > 0 ||
+    (normalized.leadership?.length ?? 0) > 0 ||
+    (normalized.skills?.length ?? 0) > 0 ||
+    (normalized.courses?.length ?? 0) > 0 ||
+    Boolean(normalized.full_name);
+
+  if (!hasContent) {
     await supabase
       .from("ingestion_runs")
       .update({
         status: "failed",
         raw_text: text.slice(0, 50000),
-        error_message: parseError ?? "Parse failed",
+        error_message: parseError ?? "Could not extract profile data from resume",
       })
       .eq("id", run.id);
     return {
-      error: parseError ?? "AI parsing failed",
+      error: parseError ?? "Could not extract profile data from resume",
       degraded,
       hint: degraded ? "Set OPENAI_API_KEY for AI parsing" : undefined,
     };
   }
 
-  const stats = await applyParsedProfile(supabase, profileId, parsed, "resume_upload");
+  const sectionCounts = countImportSections(normalized);
+  const stats = await applyParsedProfile(supabase, profileId, normalized, "resume_upload");
 
   for (const c of stats.conflicts) {
     await supabase.from("dedup_conflicts").insert({
@@ -105,7 +125,7 @@ export async function uploadAndParseResume(formData: FormData) {
     .update({
       status: "completed",
       raw_text: text.slice(0, 50000),
-      parsed_data: parsed,
+      parsed_data: normalized,
       items_inserted: stats.inserted,
       items_merged: stats.merged,
       items_skipped: stats.skipped,
@@ -120,6 +140,7 @@ export async function uploadAndParseResume(formData: FormData) {
     merged: stats.merged,
     conflicts: stats.conflicts.length,
     degraded,
+    sectionCounts,
   };
 }
 
@@ -141,8 +162,11 @@ export async function importLinkedInJson(formData: FormData) {
     };
   }
 
-  const { data: parsed, error: parseError } = parseLinkedInJson(jsonText);
-  if (!parsed) return { error: parseError ?? "Invalid JSON" };
+  const { data: parsedRaw, error: parseError } = parseLinkedInJson(jsonText);
+  if (!parsedRaw) return { error: parseError ?? "Invalid JSON" };
+
+  // Polish import bullets — manual create/update paths remain untouched.
+  const parsed = await polishLinkedInImportBullets(parsedRaw);
 
   if (linkedinUrl) parsed.linkedin_url = linkedinUrl;
 
@@ -289,8 +313,8 @@ export async function getProfileValidation() {
   };
 
   const local = validateProfileLocally({
-    headline: profile.headline,
-    summary: profile.summary,
+    full_name: profile.full_name,
+    target_roles: profile.target_roles,
     experiences: (exp.data ?? []) as { bullet_points?: string[] }[],
     skills: (skills.data ?? []) as { name: string }[],
   });

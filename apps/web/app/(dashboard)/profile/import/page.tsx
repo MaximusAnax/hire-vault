@@ -4,7 +4,6 @@ import { getProfileForUser } from "@/lib/profile/get-profile";
 import { ResumeUpload } from "@/components/ingestion/resume-upload";
 import { LinkedInImport } from "@/components/ingestion/linkedin-import";
 import { DedupConflictsPanel } from "@/components/ingestion/dedup-conflicts";
-import { ValidationPanel } from "@/components/ingestion/validation-panel";
 import type { DedupConflict, IngestionRun } from "@hirevault/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +38,7 @@ export default async function ProfileImportPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Import data</h1>
           <p className="text-muted-foreground">
-            Upload a resume, paste LinkedIn JSON, resolve duplicates, and review profile quality.
+            Upload a resume, paste LinkedIn JSON, and resolve duplicates.
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -61,8 +60,6 @@ export default async function ProfileImportPage() {
           <DedupConflictsPanel conflicts={conflicts} />
         </CardContent>
       </Card>
-
-      <ValidationPanel />
 
       <Card>
         <CardHeader>

@@ -2,6 +2,8 @@
 
 Career command center — track applications, build your master profile, tailor resumes, and prepare for interviews.
 
+**Documentation hub:** [docs/README.md](docs/README.md) · **Agents:** [AGENTS.md](AGENTS.md)
+
 Monorepo: **Turborepo** + **pnpm** workspaces.
 
 ## Structure
@@ -10,12 +12,12 @@ Monorepo: **Turborepo** + **pnpm** workspaces.
 |------|---------|
 | `apps/web` | Next.js 15 App Router (main product) |
 | `apps/extension` | Chrome MV3 job capture extension |
-| `packages/resume-templates` | ATS + visual resume HTML templates |
+| `packages/resume-templates` | LaTeX resume templates + PDF compile |
 | `packages/types` | Shared TypeScript types |
 | `packages/ai-core` | GPT-4o parsing schemas, dedup hashes, validation |
-| `packages/supabase` | SQL migrations, seed, auth docs |
-| `docs/decisions` | Architecture decision records |
-| `reports` | HTML progress reports |
+| `packages/supabase` | SQL migrations, seed |
+| `packages/orchestrator` | Agent build-loop driver (archived) |
+| `docs/` | Product, state, navigation, setup, decisions |
 
 ## Prerequisites
 
@@ -27,18 +29,11 @@ Monorepo: **Turborepo** + **pnpm** workspaces.
 **Use the repo’s pnpm version:**
 
 ```bash
-# nvm (recommended)
 nvm use
-
-# Corepack (uses packageManager from package.json)
 corepack enable
 corepack prepare pnpm@9.15.0 --activate
-
-# Or without Corepack
-npx pnpm@9.15.0 install
+# Or: npx pnpm@9.15.0 install
 ```
-
-If `corepack enable` fails with `EACCES`, fix `/usr/local/bin` permissions or install globally: `npm install -g pnpm@9.15.0`.
 
 ## Quick start
 
@@ -51,16 +46,18 @@ pnpm install
 ### 2. Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Run migrations in `packages/supabase/migrations/` (through phase 4–8) via SQL Editor or `supabase db push`.
-3. Enable **Google OAuth** — see [packages/supabase/docs/auth-google-oauth.md](packages/supabase/docs/auth-google-oauth.md).
+2. Apply migrations in `packages/supabase/migrations/` via SQL Editor or `pnpm db db push`.
+3. Enable **Google OAuth** — [docs/setup/auth-google-oauth.md](docs/setup/auth-google-oauth.md).
 
 ### 3. Environment
 
+All secrets live in a **single file at the repo root**:
+
 ```bash
-cp apps/web/.env.local.example apps/web/.env.local
-# Required: Supabase URL and anon key
-# Optional: OPENAI_API_KEY for resume/JD parsing and AI profile validation
+cp .env.example .env
 ```
+
+See [docs/setup/environment.md](docs/setup/environment.md).
 
 ### 4. Run dev server
 
@@ -78,25 +75,13 @@ Open [http://localhost:3000](http://localhost:3000). Sign in with Google at `/lo
 | `pnpm build` | Production build |
 | `pnpm lint` | ESLint across workspace |
 | `pnpm typecheck` | TypeScript check |
-| `pnpm test` | Vitest (ai-core critical paths) |
+| `pnpm test` | Vitest |
 | `pnpm quality:check` | typecheck + lint + test + build |
 
-## Phase status
+## Project state
 
-**Phase 1** — Foundation: monorepo, schema, auth, profile CRUD. [Report](reports/phase-1-foundation.html)
+Shipped features, routes, and known gaps: [docs/STATE.md](docs/STATE.md)
 
-**Phase 2** — Data ingestion: resume upload + AI parse, LinkedIn JSON import, deduplication, validation UI. [Report](reports/phase-2-ingestion.html) · [Decisions](docs/decisions/phase-2.md)
+Architecture decisions: [docs/decisions/](docs/decisions/)
 
-**Phase 3** — Job tracking: Kanban pipeline, job entry, analytics (Recharts), search/filter. [Report](reports/phase-3-dashboard.html) · [Decisions](docs/decisions/phase-3.md)
-
-**Phases 4–8** — Extension, resume tailoring, interview prep, mock interviews, coaching insights. [Report](reports/phase-4-8-complete.html) · [Decisions](docs/decisions/phase-4.md) … [phase-8.md](docs/decisions/phase-8.md)
-
-### Environment variables
-
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
-| `OPENAI_API_KEY` | No | JD parsing, question generation structure |
-| `ANTHROPIC_API_KEY` | No | Bullet rewrites, interview answers, mock feedback |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes* | Extension capture API (*server only) |
+Historical phase reports: [docs/archive/reports/](docs/archive/README.md)

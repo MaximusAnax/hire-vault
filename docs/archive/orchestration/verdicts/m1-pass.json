@@ -1,0 +1,15 @@
+{
+  "verdict": "PASS",
+  "milestone": "m1",
+  "iteration": 1,
+  "gates": { "typecheck": true, "lint": true, "test": true, "build": true },
+  "acceptanceChecks": [
+    { "id": "m1-gates", "status": "pass", "evidence": "pnpm quality:check" },
+    { "id": "m1-dedup-tests", "status": "pass", "evidence": "apps/web/lib/ingestion/dedup.test.ts" },
+    { "id": "m1-summary-tests", "status": "pass", "evidence": "packages/ai-core/src/summary.test.ts" },
+    { "id": "m1-edit-rows", "status": "pass", "evidence": "profile/page.tsx row components" },
+    { "id": "m1-no-headline-ui", "status": "pass", "evidence": "profile-header-form Target Roles + Pitch" },
+    { "id": "m1-import-polish", "status": "pass", "evidence": "parse.ts + ingestion/actions polishBullets" }
+  ],
+  "findings": []
+}

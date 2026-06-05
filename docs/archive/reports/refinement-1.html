@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HireVault — Refinement Iteration 1</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #0f1117; --card: #18181b; --border: #27272a; --text: #fafafa; --muted: #a1a1aa; --primary: #8b5cf6; --accent: #3b82f6; --green: #22c55e; --yellow: #eab308; --red: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; max-width: 1100px; margin-inline: auto; }
+    a { color: var(--accent); }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .report-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 2rem; align-items: start; }
+    .report-main { min-width: 0; }
+    nav.toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; position: sticky; top: 1rem; align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    nav.toc ul { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; scroll-margin-top: 1.5rem; }
+    @media (max-width: 768px) { .report-layout { grid-template-columns: 1fr; } nav.toc { position: static; max-height: none; margin-bottom: 1rem; } }
+    section summary { cursor: pointer; padding: 1rem 1.25rem; font-weight: 600; list-style: none; }
+    section summary::-webkit-details-marker { display: none; }
+    section summary::after { content: " ▾"; color: var(--muted); float: right; }
+    .content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+    pre { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.8rem; }
+    code { font-family: "JetBrains Mono", monospace; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.85em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: #27272a; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .green { background: rgba(34,197,94,0.2); color: var(--green); }
+    .yellow { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .red { background: rgba(239,68,68,0.2); color: var(--red); }
+    .mermaid { background: #09090b; border-radius: 6px; padding: 1rem; }
+    ul.files { font-size: 0.9rem; color: var(--muted); }
+    ul.files li code { background: #27272a; }
+    .phase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+    .phase-card { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; }
+    .phase-card strong { color: var(--text); }
+    .panel-highlight { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.35); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .panel-highlight h2 { margin-top: 0; color: var(--primary); }
+    .panel-highlight ul { padding-left: 1.1rem; }
+    .panel-highlight li { margin-bottom: 0.35rem; font-size: 0.9rem; }
+    .small-muted { color: var(--muted); font-size: 0.85rem; }
+    .kv { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 0.75rem; font-size: 0.85rem; }
+    .kv dt { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>HireVault — Refinement Iteration 1</h1>
+  <p class="subtitle">Iteration report · May 24, 2026 · Profile · Applications · Resumes · Interview Prep · Quality</p>
+
+  <div class="report-layout">
+  <nav class="toc">
+    <strong>Table of contents</strong>
+    <ul>
+      <li><a href="#decisions-locked">Decisions Locked In</a></li>
+      <li><a href="#executive">Executive Summary</a></li>
+      <li><a href="#why">Architecture WHY</a></li>
+      <li><a href="#files">Files Changed</a></li>
+      <li><a href="#walkthrough">Code Walkthrough</a></li>
+      <li><a href="#diagrams">Mermaid Diagrams</a></li>
+      <li><a href="#quality">Quality Metrics</a></li>
+      <li><a href="#accountability">Accountability</a></li>
+      <li><a href="#postmortems">Mistake Postmortems</a></li>
+      <li><a href="#next">Next Steps</a></li>
+    </ul>
+  </nav>
+
+  <main class="report-main">
+
+  <div id="decisions-locked" class="panel-highlight">
+    <h2>Decisions Locked In</h2>
+    <p class="small-muted">
+      Captured from the alignment round at the top of the plan so future
+      agents can read context here without re-loading the plan file.
+    </p>
+    <ul>
+      <li><strong>Headline replacement.</strong> Drop the single Headline UI; replace with <strong>Target Roles</strong> (chip array) + optional <strong>Personal Pitch</strong> (one-line free text). Keep the <code>headline</code> column in the DB for backward compatibility but stop surfacing it. Both new fields feed downstream tailoring / interview prompts.</li>
+      <li><strong>Bullet auto-format.</strong> Import-time only (resume parse + LinkedIn import). Manual <code>createExperience</code> / <code>updateExperience</code> entries are trusted as written — no per-save AI spend.</li>
+      <li><strong>Summary strategy.</strong> Hybrid: per-entity 1–2 sentence snippet cache + one cheap stitch call to assemble 3–5 sentences. Manual "Regenerate Summary" button + a "Profile changed since last assembly" pill. Auto-regenerate the assembled summary only when an entity is added or removed (not on minor field edits).</li>
+      <li><strong>Question bank gating.</strong> Per-role, persistent, gated. <code>Generate questions</code> becomes <code>Generate more</code> after the first batch and stays locked until every question in the current bank has <code>practice_rating != null</code> OR <code>practiced = true</code>. The existing bank is passed to the prompt to fill JD gaps without duplicating.</li>
+      <li><strong>Default behaviors applied.</strong> Smart-capture accepts URL or pasted JD; best-effort fetch + JD-paste fallback; multi-location free-text chips; 5-star priority UI; <code>gpt-4o-mini</code> for snippet + assemble calls; any self-rating counts as "practiced".</li>
+    </ul>
+  </div>
+
+  <section id="executive" open>
+    <summary>Executive Summary</summary>
+    <div class="content">
+      <p>
+        Iteration 1 polishes the four user-facing surfaces that shipped in phases 1–8 and
+        installs a cost-aware hybrid AI summary engine. Profile editing is now consistent
+        across every section (Experience, Education, Projects, Skills, Courses), the
+        Applications / Jobs page accepts a paste-URL-or-JD with a preview-and-edit card,
+        Resumes always renders the Jobs panel even when the user has zero saved resumes,
+        and Interview Prep gates "Generate more" until the role's bank is fully rated.
+        Phase E added Vitest coverage for the new modules and produced this report.
+      </p>
+      <div class="phase-grid">
+        <div class="phase-card"><strong>Phase A</strong><br/>Profile: edit-everywhere rows, Target Roles + Pitch, hybrid AI Summary engine, import-time bullet polish</div>
+        <div class="phase-card"><strong>Phase B</strong><br/>Applications: paste-URL-or-JD with preview, multi-location chips, 5-star priority</div>
+        <div class="phase-card"><strong>Phase C</strong><br/>Resumes: always-on Jobs panel + empty-state card</div>
+        <div class="phase-card"><strong>Phase D</strong><br/>Interview Prep: per-role bank filter, gated generation, dedupe-aware regen, per-question delete</div>
+        <div class="phase-card"><strong>Phase E</strong><br/>Vitest for summary / scrape / interviews, full quality:check, this report</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="why">
+    <summary>Architecture WHY</summary>
+    <div class="content">
+      <p>
+        Two new design decisions drove most of the change: the hybrid summary engine and the
+        smart-capture preview flow. Both prioritize <strong>spend discipline</strong> while still
+        keeping the user in control of the output.
+      </p>
+      <table>
+        <tr><th>Surface</th><th>Choice</th><th>Why</th></tr>
+        <tr>
+          <td>Profile summary</td>
+          <td>Per-entity snippet cache + single stitch call</td>
+          <td>Field-level edits no longer trigger a full-profile rewrite. Only entity add/remove auto-assembles; everything else is manual. Hash-keyed cache avoids regenerating snippets when the cosmetic content is unchanged (see <code>entityHash</code>).</td>
+        </tr>
+        <tr>
+          <td>Headline → Target Roles + Pitch</td>
+          <td>Chip array + one-line pitch</td>
+          <td>A free-text headline gave the model nothing to anchor on. Target roles drive resume tailoring, mock interview tone, and the question generator. Keeping the legacy <code>headline</code> column means imports from old data still work.</td>
+        </tr>
+        <tr>
+          <td>Applications add flow</td>
+          <td>Smart capture (URL or JD) + preview card</td>
+          <td>The old 7-field form was hostile to people pasting a single URL. Smart capture detects URLs, runs best-effort scraping (Greenhouse / Lever / Ashby / Workday) with a manual-paste fallback, then shows the AI-parsed fields for review before insert.</td>
+        </tr>
+        <tr>
+          <td>Multi-location</td>
+          <td><code>locations text[]</code> with legacy <code>location</code> mirror</td>
+          <td>Roles often have several locations ("NYC, SF, Remote"). The array column accepts chips; we still write the first chip into the legacy <code>location</code> column so existing queries / displays keep working.</td>
+        </tr>
+        <tr>
+          <td>Priority</td>
+          <td>5-star UI on top of <code>int</code> column</td>
+          <td>Schema unchanged. Better affordance than a number input; star count of 5 is universally read as "highest".</td>
+        </tr>
+        <tr>
+          <td>Resumes empty-state</td>
+          <td>Render Jobs panel + tailored CTA</td>
+          <td>Old code early-returned, stranding new users with nothing to click. The two-column shell now renders unconditionally; the empty case becomes a teaching moment, not a dead end.</td>
+        </tr>
+        <tr>
+          <td>Interview generation gate</td>
+          <td>Locked until all rated; existing questions in prompt</td>
+          <td>Prevents AI spend on near-duplicate questions and encourages the user to actually practice before requesting more. The dedupe block is <code>buildExistingQuestionsBlock</code>, unit-tested.</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="files">
+    <summary>Files Changed</summary>
+    <div class="content">
+
+      <h3>Migrations</h3>
+      <ul class="files">
+        <li><code>packages/supabase/migrations/20260524000100_refinement_phase_a_profile.sql</code> — adds <code>target_roles</code>, <code>pitch</code>, <code>summary_stale</code>, <code>summary_assembled_at</code> to <code>profiles</code>; creates <code>profile_summary_snippets</code> + RLS.</li>
+        <li><code>packages/supabase/migrations/20260524000200_refinement_phase_b_applications.sql</code> — adds <code>jobs.locations text[]</code> with backfill from legacy <code>location</code>.</li>
+      </ul>
+
+      <h3>packages/ai-core</h3>
+      <ul class="files">
+        <li><code>src/summary.ts</code> — new hybrid summary engine: <code>entityHash</code>, <code>generateSnippet</code>, <code>assembleSummary</code> (degrades cleanly without <code>OPENAI_API_KEY</code>).</li>
+        <li><code>src/interviews.ts</code> — adds <code>buildExistingQuestionsBlock</code> + <code>InterviewCandidateContext</code> and threads <code>existingQuestions</code> through the prompt.</li>
+        <li><code>src/parse.ts</code> — runs imported resume / LinkedIn bullets through <code>polishBullets</code>.</li>
+        <li><code>src/write.ts</code> — new <code>polishBullets</code> (Claude Haiku) with local-only fallback.</li>
+        <li><code>src/schemas.ts</code> — extends parsed-JD schema with <code>locations: string[]</code>.</li>
+        <li><code>src/resume.ts</code>, <code>src/prompts.ts</code> — propagate target roles / pitch into tailoring prompts.</li>
+        <li><code>src/index.ts</code> — re-exports the new summary module.</li>
+        <li><code>src/summary.test.ts</code>, <code>src/interviews.test.ts</code> — Phase E.</li>
+      </ul>
+
+      <h3>packages/types</h3>
+      <ul class="files">
+        <li><code>src/index.ts</code> — adds <code>target_roles</code>, <code>pitch</code>, <code>summary_stale</code>, <code>summary_assembled_at</code> to <code>Profile</code>; <code>locations</code> to <code>Job</code> / <code>ApplicationWithJob</code>.</li>
+      </ul>
+
+      <h3>apps/web — profile</h3>
+      <ul class="files">
+        <li><code>app/(dashboard)/profile/page.tsx</code> — wires the per-section row components and loads <code>summary_stale</code>.</li>
+        <li><code>components/profile/profile-header-form.tsx</code> — Headline removed; Target Roles chips + Pitch input + Summary panel with Regenerate.</li>
+        <li><code>components/profile/education-row.tsx</code>, <code>project-row.tsx</code>, <code>skill-row.tsx</code>, <code>course-row.tsx</code> — new edit-everywhere row components matching <code>ExperienceRow</code>.</li>
+        <li><code>lib/profile/actions.ts</code> — extended with <code>updateCourse</code>, <code>updateSkill</code>, <code>regenerateProfileSummary</code>; every create/update/delete now syncs the snippet cache.</li>
+        <li><code>lib/profile/summary.ts</code> — new server wrappers: <code>regenerateSnippet</code>, <code>dropSnippetForEntity</code>, <code>assembleProfileSummary</code>.</li>
+        <li><code>lib/ingestion/actions.ts</code> — pipes parsed resume / LinkedIn payloads through <code>polishBullets</code>.</li>
+      </ul>
+
+      <h3>apps/web — applications / jobs</h3>
+      <ul class="files">
+        <li><code>app/(dashboard)/jobs/page.tsx</code> — renders location chips from the array column.</li>
+        <li><code>components/applications/add-application-form.tsx</code> — two-tab card (Smart capture / Manual) with preview state.</li>
+        <li><code>components/applications/job-preview-card.tsx</code> — new editable preview rendered after a successful parse.</li>
+        <li><code>components/applications/application-card.tsx</code> — multi-location chips, 5-star priority readout.</li>
+        <li><code>components/ui/star-rating.tsx</code> — new reusable 5-star control with hidden input for plain <code>form</code> submission.</li>
+        <li><code>lib/applications/actions.ts</code> — <code>parseAndPreviewJob</code> (URL or text), <code>locations[]</code> normalization, mirror to legacy <code>location</code>.</li>
+        <li><code>lib/applications/scrape.ts</code> — new <code>fetchJobFromUrl</code> with per-domain selectors (Greenhouse / Lever / Ashby / Workday) and a readability-ish generic fallback.</li>
+        <li><code>lib/applications/scrape.test.ts</code> — Phase E.</li>
+        <li><code>package.json</code>, <code>vitest.config.ts</code> — adds Vitest to apps/web so the scrape test runs under <code>pnpm test</code> / <code>pnpm quality:check</code>.</li>
+      </ul>
+
+      <h3>apps/web — resumes</h3>
+      <ul class="files">
+        <li><code>components/resumes/resume-workspace.tsx</code> — removed the early return; Jobs panel always rendered; empty-state card explains the tailoring CTA.</li>
+      </ul>
+
+      <h3>apps/web — interviews</h3>
+      <ul class="files">
+        <li><code>components/interviews/interview-prep.tsx</code> — per-role bank filter, "Generate more" gating, per-question delete.</li>
+        <li><code>lib/interviews/actions.ts</code> — adds <code>deleteQuestion</code>, threads existing questions into <code>generateInterviewQuestions</code>.</li>
+      </ul>
+
+      <h3>reports / tracking</h3>
+      <ul class="files">
+        <li><code>reports/refinement-1.html</code> — this report.</li>
+        <li><code>reports/mistake-tracker.md</code> — two new postmortems (resumes empty-state, interview bank cross-job leakage) + recurring-pattern note.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="walkthrough">
+    <summary>Code Walkthrough</summary>
+    <div class="content">
+
+      <h3>1. Hybrid summary engine — <code>packages/ai-core/src/summary.ts</code></h3>
+      <p class="small-muted">
+        <code>entityHash</code> is the cache key. Normalization collapses whitespace, lowercases strings,
+        sorts object keys, and equates null/undefined so cosmetic edits never bust the cache.
+      </p>
+
+```52:78:packages/ai-core/src/summary.ts
+function normalizeValue(value: unknown): unknown {
+  if (value == null) return null;
+  if (typeof value === "string") return value.trim().toLowerCase().replace(/\s+/g, " ");
+  if (Array.isArray(value)) return value.map(normalizeValue);
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      out[key] = normalizeValue((value as Record<string, unknown>)[key]);
+    }
+    return out;
+  }
+  return value;
+}
+
+export function entityHash(entity: SnippetEntity): string {
+  const payload = JSON.stringify({
+    type: entity.type,
+    fields: normalizeValue(entity.fields),
+  });
+  return createHash("sha256").update(payload).digest("hex");
+}
+```
+
+      <p class="small-muted">
+        <code>assembleSummary</code> degrades gracefully: without an API key it concatenates snippets and
+        clamps to five sentences so the UI still shows something useful.
+      </p>
+
+```143:217:packages/ai-core/src/summary.ts
+export async function assembleSummary(
+  snippets: CachedSnippet[],
+  profile: SummaryProfileContext
+): Promise<{
+  summary: string;
+  model: string;
+  degraded?: boolean;
+  error?: string;
+}> {
+  const cleanedSnippets = snippets.map((s) => s.snippet.trim()).filter(Boolean);
+
+  if (cleanedSnippets.length === 0) {
+    return { summary: "", model: ASSEMBLE_MODEL, degraded: true };
+  }
+
+  const client = getClient();
+  if (!client) {
+    const fallback = cleanedSnippets.slice(0, 5).join(" ");
+    return { summary: clampSentences(fallback, 5), model: ASSEMBLE_MODEL, degraded: true };
+  }
+  // …call gpt-4o-mini, then clampSentences to 5…
+}
+```
+
+      <p class="small-muted">
+        Server-side, the snippet cache is the only place that issues per-entity LLM calls. Every
+        create / update calls <code>regenerateSnippet</code>, which is a no-op when the hash matches.
+      </p>
+
+```135:194:apps/web/lib/profile/summary.ts
+export async function regenerateSnippet(
+  entityType: SummaryEntityType,
+  entityId: string
+): Promise<{ regenerated: boolean; degraded?: boolean; error?: string }> {
+  // …fetch the entity row, build a SnippetEntity, compute hash…
+  if (existing && existing.source_hash === hash) {
+    return { regenerated: false };
+  }
+
+  const { snippet, model, degraded, error } = await generateSnippet(entity);
+  const finalSnippet = snippet ?? fallbackSnippet(entity);
+  // …upsert into profile_summary_snippets, mark profile summary stale…
+}
+```
+
+      <h3>2. Smart-capture scrape — <code>apps/web/lib/applications/scrape.ts</code></h3>
+      <p class="small-muted">
+        URL detection is a single anchored regex with a wrapping <code>trim()</code>. The
+        <code>parseAndPreviewJob</code> action calls <code>fetchJobFromUrl</code> only when this returns true.
+      </p>
+
+```32:36:apps/web/lib/applications/scrape.ts
+const URL_REGEX = /^https?:\/\/[^\s]+$/i;
+
+export function isLikelyUrl(input: string): boolean {
+  return URL_REGEX.test(input.trim());
+}
+```
+
+      <p class="small-muted">
+        Per-domain handlers extract the title / company / location from board-specific markup;
+        a readability-ish generic extractor handles unknown hosts. Blocked / empty results return a
+        typed <code>ScrapeBlocked</code> with a hostname-aware <code>fallbackHint</code>.
+      </p>
+
+```64:79:apps/web/lib/applications/scrape.ts
+const greenhouse: DomainHandler = {
+  id: "greenhouse",
+  matches: (host) => host.endsWith("greenhouse.io"),
+  extract(root) {
+    const title = textOf(root.querySelector(".app-title")) || textOf(root.querySelector("h1"));
+    const company = textOf(root.querySelector(".company-name")) || textOf(root.querySelector(".main-header__company"));
+    const location = textOf(root.querySelector(".location"));
+    const body = root.querySelector("#content") ?? root.querySelector(".content") ?? root.querySelector("#main_fields");
+    return {
+      title: title || null,
+      company: company.replace(/^at\s+/i, "") || null,
+      location: location || null,
+      text: textOf(body),
+    };
+  },
+};
+```
+
+```204:228:apps/web/lib/applications/scrape.ts
+function fallbackHintFor(host: string | null): string {
+  if (host?.includes("linkedin.com")) {
+    return "LinkedIn blocks bot traffic. Open the posting and paste the JD text into the box instead.";
+  }
+  if (host?.includes("indeed.com")) {
+    return "Indeed often blocks automated fetches. Copy the JD text and paste it in instead.";
+  }
+  return "We couldn’t reach this URL. Copy the job description text and paste it in instead.";
+}
+
+export async function fetchJobFromUrl(url: string): Promise<ScrapeResult> {
+  const host = hostFromUrl(url);
+  if (!host) {
+    return { blocked: true, url, fallbackHint: "That doesn’t look like a valid URL." };
+  }
+
+  const fetched = await fetchHtml(url);
+  if (!fetched.ok) {
+    return {
+      blocked: true,
+      url,
+      status: fetched.status,
+      fallbackHint: fallbackHintFor(host),
+    };
+  }
+  // …parse + handler + generic fallback…
+}
+```
+
+      <h3>3. Interview Prep gating — <code>apps/web/components/interviews/interview-prep.tsx</code></h3>
+      <p class="small-muted">
+        The bank now filters by the selected role, and "Generate more" is locked until everything
+        is rated. The dedupe prompt block is built by an exported helper so the unit test can
+        assert it without mocking the Anthropic SDK.
+      </p>
+
+```50:67:apps/web/components/interviews/interview-prep.tsx
+  const jobQuestions = jobId
+    ? questions.filter((q) => q.job_id === jobId)
+    : [];
+
+  const current = jobQuestions[flashIndex];
+
+  const bankHasQuestions = jobQuestions.length > 0;
+  const allRated =
+    bankHasQuestions &&
+    jobQuestions.every((q) => q.practice_rating != null || q.practiced);
+  const generateMoreDisabled = pending || !allRated;
+  const generateLabel = bankHasQuestions ? "Generate more" : "Generate questions";
+  const generateTitle = bankHasQuestions
+    ? allRated
+      ? "Generate additional questions targeting uncovered parts of the JD"
+      : "Rate all current questions before generating more"
+    : "Generate the initial question bank for this role";
+```
+
+```33:56:packages/ai-core/src/interviews.ts
+export function buildExistingQuestionsBlock(
+  existingQuestions: string[] | undefined,
+  count: number
+): string {
+  if (!existingQuestions?.length) return "";
+  const list = existingQuestions
+    .map((q, i) => `${i + 1}. ${q}`)
+    .join("\n");
+  return (
+    `\n\nEXISTING QUESTIONS already in the bank for this role ` +
+    `(do NOT duplicate their semantics — even paraphrases count as duplicates). ` +
+    `Generate questions that probe DIFFERENT angles of the job description:\n` +
+    `${list}\n\n` +
+    `Focus the new questions on uncovered parts of the JD: job responsibilities ` +
+    `not yet asked about, preferred qualifications not yet probed, and tech ` +
+    `stack items not yet covered. If the existing bank already saturates the JD, ` +
+    `you may return fewer than ${count} questions rather than repeat ground.`
+  );
+}
+```
+
+      <h3>4. Resumes empty-state — <code>apps/web/components/resumes/resume-workspace.tsx</code></h3>
+      <p class="small-muted">
+        The Jobs panel is now part of the unconditional shell; the right column shows a
+        teaching CTA when there are no tailored resumes yet.
+      </p>
+
+```81:158:apps/web/components/resumes/resume-workspace.tsx
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Jobs</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-64 overflow-auto">
+            {hasJobs ? (
+              jobs.map((j) => (/* …Tailor button per job… */))
+            ) : (
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>No jobs saved yet — add one from the Applications page.</p>
+                <Link href="/applications" className="…">Go to Applications →</Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        {hasResumes ? (/* Versions list */) : null}
+      </div>
+
+      {!selected && !hasResumes ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tailor your first resume</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>Pick a job on the left to generate your first tailored resume…</p>
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+  );
+```
+
+    </div>
+  </section>
+
+  <section id="diagrams">
+    <summary>Mermaid Diagrams</summary>
+    <div class="content">
+      <h3>Architecture overview (changed surfaces)</h3>
+      <div class="mermaid">
+flowchart LR
+  subgraph profileSurface [Profile Page]
+    targetRoles[Target Roles chips + Pitch]
+    editAll[Edit buttons on education / projects / skills / courses]
+    summaryBtn[Regenerate Summary button + stale indicator]
+  end
+
+  subgraph snippetEngine [Hybrid Summary Engine]
+    snippetCache[(profile_summary_snippets)]
+    cheapModel[gpt-4o-mini]
+    assembler[assembleSummary]
+  end
+
+  subgraph appsSurface [Applications / Jobs]
+    pasteAdd[Paste URL or JD primary input]
+    scrape[fetchJobFromUrl]
+    aiParse[parseJobDescription]
+    multiLoc[Multi-location chips]
+    starPrio[5-star priority]
+  end
+
+  subgraph resumesSurface [Resumes]
+    workspaceFix[Always render Jobs panel + empty CTA]
+  end
+
+  subgraph interviewSurface [Interview Prep]
+    perRoleBank[Per-role bank filter]
+    genGate[Generate locked when bank not empty]
+    genMore[Generate more uses existing as context]
+    deleteQ[Delete question]
+  end
+
+  targetRoles --> snippetEngine
+  editAll --> snippetEngine
+  snippetCache --> assembler
+  cheapModel --> snippetCache
+  assembler --> summaryBtn
+
+  pasteAdd --> scrape
+  pasteAdd --> aiParse
+  scrape --> aiParse
+  aiParse --> previewCard[Preview card]
+  previewCard --> saveJob[(jobs)]
+  saveJob --> workspaceFix
+  saveJob --> perRoleBank
+  perRoleBank --> genGate --> genMore --> deleteQ
+      </div>
+
+      <h3>Hybrid summary engine sequence</h3>
+      <div class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant UI as ProfileHeaderForm
+  participant Act as updateProfile / mutateEntity action
+  participant Hash as entityHash
+  participant Cache as profile_summary_snippets
+  participant LLM as gpt-4o-mini
+  participant Asm as assembleSummary
+
+  U->>UI: Edit experience / add project
+  UI->>Act: server action
+  Act->>Hash: compute entity content hash
+  Hash->>Cache: lookup by entity_type + entity_id
+  alt hash unchanged
+    Cache-->>Act: reuse snippet (no spend)
+  else hash changed OR new entity
+    Act->>LLM: generate snippet (1-2 sentences)
+    LLM-->>Cache: store {entity_type, entity_id, snippet, hash}
+  end
+  Act->>UI: mark profile summary stale
+  U->>UI: Click Regenerate Summary
+  UI->>Asm: assembleProfileSummary()
+  Asm->>Cache: read all snippets for user
+  Asm->>LLM: stitch into 3-5 sentence narrative (one cheap call)
+  Asm-->>UI: write profiles.summary + clear stale flag
+      </div>
+    </div>
+  </section>
+
+  <section id="quality">
+    <summary>Quality Metrics</summary>
+    <div class="content">
+      <p class="small-muted">
+        All gates were run from the repo root with <code>pnpm quality:check</code> and
+        independently. Times include Turbo overhead. Vitest runs in two workspaces:
+        <code>@hirevault/ai-core</code> (3 files, 16 tests) and <code>@hirevault/web</code>
+        (1 file, 7 tests) for a total of <strong>23 tests</strong>.
+      </p>
+      <table>
+        <tr><th>Gate</th><th>Command</th><th>Result</th><th>Wall time</th><th>Notes</th></tr>
+        <tr>
+          <td>Typecheck</td>
+          <td><code>pnpm typecheck</code></td>
+          <td><span class="badge green">PASS</span></td>
+          <td>7.5s</td>
+          <td>9 tasks across 6 packages</td>
+        </tr>
+        <tr>
+          <td>Lint</td>
+          <td><code>pnpm lint</code></td>
+          <td><span class="badge green">PASS</span></td>
+          <td>2.6s</td>
+          <td>next lint: "No ESLint warnings or errors"</td>
+        </tr>
+        <tr>
+          <td>Vitest (ai-core)</td>
+          <td><code>pnpm --filter @hirevault/ai-core test</code></td>
+          <td><span class="badge green">16/16 PASS</span></td>
+          <td>0.45s</td>
+          <td><code>resume.test.ts</code> 2 · <code>summary.test.ts</code> 10 · <code>interviews.test.ts</code> 4</td>
+        </tr>
+        <tr>
+          <td>Vitest (web)</td>
+          <td><code>pnpm --filter @hirevault/web test</code></td>
+          <td><span class="badge green">7/7 PASS</span></td>
+          <td>0.37s</td>
+          <td><code>lib/applications/scrape.test.ts</code></td>
+        </tr>
+        <tr>
+          <td>Build</td>
+          <td><code>pnpm build</code></td>
+          <td><span class="badge green">PASS</span></td>
+          <td>22.2s</td>
+          <td>Next 15.1 production build + extension esbuild bundle</td>
+        </tr>
+        <tr>
+          <td>quality:check (full)</td>
+          <td><code>pnpm quality:check</code></td>
+          <td><span class="badge green">PASS</span></td>
+          <td>5.1s (Turbo full-cache)</td>
+          <td>Same gates chained; subsequent runs cache-hit FULL TURBO</td>
+        </tr>
+      </table>
+
+      <h3>What the new tests cover</h3>
+      <ul>
+        <li><strong><code>summary.test.ts</code></strong>: <code>entityHash</code> stability across whitespace, key order, null↔undefined, and entity type discrimination; <code>assembleSummary</code> degraded path (≤ 5 sentences, empty array → "", whitespace-only snippets ignored); <code>generateSnippet</code> degraded path returns <code>{ snippet: null, degraded: true }</code> without throwing when <code>OPENAI_API_KEY</code> is missing.</li>
+        <li><strong><code>interviews.test.ts</code></strong>: <code>buildExistingQuestionsBlock</code> returns <code>""</code> when no existing questions are passed, embeds every existing question verbatim and numbered, includes "do NOT duplicate" / "different angles" / "uncovered parts" instructions, and references the requested count in the saturation escape hatch.</li>
+        <li><strong><code>scrape.test.ts</code></strong>: <code>isLikelyUrl</code> accepts http/https with trim, rejects pasted JD text / bare hosts / ftp; <code>fetchJobFromUrl</code> extracts <code>.app-title</code>/<code>.company-name</code>/<code>.location</code>/<code>#content</code> from a Greenhouse fixture, returns <code>{ blocked: true, fallbackHint }</code> for whitespace-only bodies, returns <code>{ blocked: true, status: 403 }</code> with a LinkedIn-specific hint on non-200, and rejects malformed URLs. <code>fetch</code> is stubbed with <code>vi.stubGlobal</code>; no network access.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="accountability">
+    <summary>Accountability</summary>
+    <div class="content">
+
+      <h3>Confidence ratings per phase</h3>
+      <table>
+        <tr><th>Phase</th><th>Surface</th><th>Confidence</th><th>Notes</th></tr>
+        <tr><td>A</td><td>Edit-everywhere row split</td><td><span class="badge green">HIGH</span></td><td>Pure component split, server actions already existed.</td></tr>
+        <tr><td>A</td><td>Target Roles + Pitch</td><td><span class="badge green">HIGH</span></td><td>Additive schema; downstream prompts updated.</td></tr>
+        <tr><td>A</td><td>Hybrid summary engine</td><td><span class="badge yellow">MEDIUM</span></td><td>Local fallback covered; live OpenAI quality not unit-tested.</td></tr>
+        <tr><td>A</td><td>Bullet auto-format on import</td><td><span class="badge yellow">MEDIUM</span></td><td>Local-polish fallback works; no integration test on the actual Claude output.</td></tr>
+        <tr><td>B</td><td>Smart capture (URL/JD)</td><td><span class="badge yellow">MEDIUM</span></td><td>Per-domain selectors will rot when boards redesign; fallback hint surfaces that to the user.</td></tr>
+        <tr><td>B</td><td>Multi-location + 5-star priority</td><td><span class="badge green">HIGH</span></td><td>UI primitives + backfill SQL covered.</td></tr>
+        <tr><td>C</td><td>Resumes empty-state fix</td><td><span class="badge green">HIGH</span></td><td>Markup change; easy to validate visually.</td></tr>
+        <tr><td>D</td><td>Per-role bank + gating</td><td><span class="badge green">HIGH</span></td><td>Pure derived state from existing data + new <code>deleteQuestion</code>.</td></tr>
+        <tr><td>D</td><td>Dedupe-aware generation</td><td><span class="badge green">HIGH</span></td><td>Helper extracted + unit-tested.</td></tr>
+        <tr><td>E</td><td>Vitest coverage + report</td><td><span class="badge green">HIGH</span></td><td>23/23 pass, no flake observed.</td></tr>
+      </table>
+
+      <h3>Known weaknesses (aggregated)</h3>
+      <ul>
+        <li>Per-domain scraper selectors (Greenhouse, Lever, Ashby, Workday) will rot when boards redesign. The fallback hint nudges users to paste the JD, but there is no monitoring on selector hit-rate.</li>
+        <li>No live integration tests against OpenAI / Anthropic — both AI engines exercise only the degraded path under unit test. A separate sandbox script would be needed to verify prompt quality.</li>
+        <li><code>Tooltip</code> on "Generate more" is currently a plain <code>title</code> attribute (native browser tooltip). A real <code>@radix-ui/react-tooltip</code> primitive exists in dependencies but is not yet wired here.</li>
+        <li>Applications card lets you edit status / notes but not the underlying job title or company; that flow still requires the manual tab.</li>
+        <li><code>assembleProfileSummary</code> is invoked synchronously inside <code>create*</code> server actions, which adds latency on add/remove. Acceptable for now (single cheap call), but should move to a debounced background path if user volume grows.</li>
+        <li>The hybrid summary engine assumes <code>profile_summary_snippets</code> rows have entity_ids that match the live row. There's no FK, so an out-of-band delete of an entity will leak a snippet row until the next manual delete.</li>
+        <li>Migration <code>20260524000100</code> / <code>...000200</code> must be applied manually in Supabase before the new code paths are exercised in production.</li>
+      </ul>
+
+      <h3>Alternatives rejected</h3>
+      <ul>
+        <li><strong>Render-prop on <code>SectionList</code></strong> instead of split row components — rejected for being type-unsafe across heterogeneous entity shapes.</li>
+        <li><strong>Single full-profile assemble call on every edit</strong> — rejected; multiplies cost by N edits per user. Hybrid cache wins.</li>
+        <li><strong>Headless browser for job scraping</strong> — rejected; pulls in Puppeteer/Chromium just to bypass bot walls already covered by manual paste.</li>
+        <li><strong>Auto-regenerate the assembled summary on every snippet write</strong> — rejected; we still bill for the stitch call. Manual button + stale pill puts the user in control.</li>
+        <li><strong>Auto-rate when "Generate more" is clicked</strong> — rejected; makes the gating meaningless. User must self-rate.</li>
+      </ul>
+
+      <h3>"Break this" challenges</h3>
+      <ol>
+        <li>Add an experience, then save the exact same row again unchanged → confirm zero new OpenAI calls (<code>regenerateSnippet</code> short-circuits on hash match).</li>
+        <li>Delete an entity from outside the app (direct SQL) → confirm the cache row remains until <code>assembleProfileSummary</code> is re-run; it should still produce a sensible narrative.</li>
+        <li>Paste a Greenhouse URL, then immediately paste the rendered JD text → both should produce a similar preview card.</li>
+        <li>Paste a LinkedIn URL → confirm the blocked banner names LinkedIn and prompts to paste.</li>
+        <li>Rate 9 of 10 questions, click "Generate more" → button must stay disabled with the tooltip text. Rate the last one → unlocks.</li>
+        <li>Delete every question in a role's bank → "Generate questions" label returns; existing-questions block is empty.</li>
+      </ol>
+
+      <h3>Verification playbook</h3>
+      <ol>
+        <li>Run <code>pnpm quality:check</code>. Must pass typecheck, lint, all 23 Vitest tests, and the full build.</li>
+        <li><strong>Profile</strong>: edit one entry from each section (Experience, Education, Project, Skill, Course); confirm Regenerate Summary works; confirm Target Roles + Pitch save and persist on reload.</li>
+        <li><strong>Applications</strong>: paste a Greenhouse URL → confirm preview → save. Then paste raw JD text → confirm preview → save. Try a LinkedIn URL → confirm the blocked banner names LinkedIn.</li>
+        <li><strong>Resumes</strong> with zero resumes: confirm the Jobs panel is visible with at least one job, click to tailor, confirm flow.</li>
+        <li><strong>Interview prep</strong>: select a role; confirm the bank only shows that role's questions; rate all; confirm "Generate more" unlocks; confirm new questions don't duplicate existing ones; delete one.</li>
+        <li>Open <code>reports/refinement-1.html</code> in a browser; verify all sections render and Mermaid diagrams display.</li>
+      </ol>
+
+      <h3>Questions for you</h3>
+      <ul>
+        <li>Do you want the snippet cache to also store the model name on the assembled summary row (today only the snippet rows carry it)? Useful for cost attribution if we ever switch models.</li>
+        <li>Should the "Generate more" gate accept "skipped" as equivalent to "rated", or stay strict on a numeric self-rating?</li>
+        <li>Should the multi-location chip array enforce uniqueness server-side (today it normalizes whitespace but doesn't dedupe identical entries)?</li>
+        <li>Do you want the per-domain scraper map exposed as a config so users can add their own selectors?</li>
+        <li>Headline column is now unused in the UI. Drop it in a future migration, or leave for LinkedIn back-compat?</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="postmortems">
+    <summary>Mistake Postmortems</summary>
+    <div class="content">
+
+      <h3>2026-05-24 — Resumes workspace hid Jobs panel on empty resumes</h3>
+      <dl class="kv">
+        <dt>Symptom</dt><dd>New users landing on <code>/resumes</code> with zero tailored resumes saw a single CTA card and no way to discover that they had to start from a Job on the Jobs panel. The Jobs panel itself was never rendered.</dd>
+        <dt>Root cause</dt><dd><code>ResumeWorkspace</code> early-returned at lines ~78–86 in the original implementation when <code>resumes.length === 0</code>. The early return bypassed the two-column layout that owned the Jobs panel.</dd>
+        <dt>Fix</dt><dd>Removed the early return. Jobs panel and Versions list are now part of the unconditional shell; the right column shows a teaching CTA when no resume is selected (see <code>components/resumes/resume-workspace.tsx</code> lines 81–158).</dd>
+        <dt>Should have caught</dt><dd>A "zero resumes, ≥ 1 job" smoke test, or a manual onboarding walkthrough as a checklist item before shipping Phase 5.</dd>
+        <dt>Prevention added</dt><dd>Phase E added scrape.ts fixture tests + interview bank unit test; mistake tracker now flags "empty-state regressions" as a recurring pattern with a rule that every list component needs a Vitest / Storybook case for <code>data = []</code>.</dd>
+      </dl>
+
+      <h3>2026-05-24 — Interview bank rendered every job's questions for the selected role</h3>
+      <dl class="kv">
+        <dt>Symptom</dt><dd>When selecting Role A in <code>InterviewPrep</code>, the question bank section listed questions belonging to Role B as well. Practice ratings were correctly per-question, but the bank read like a global pile.</dd>
+        <dt>Root cause</dt><dd>The original component iterated <code>questions</code> directly (the union of every user's questions across jobs). There was no <code>filter((q) =&gt; q.job_id === jobId)</code> step, and the bank section rendered even when no role was selected.</dd>
+        <dt>Fix</dt><dd>Derived <code>jobQuestions</code> at the top of the component and consumed it everywhere downstream (bank list, gating, current flash question). Hid the entire bank Card when <code>jobId</code> is empty. See <code>components/interviews/interview-prep.tsx</code> lines 50–67 and 218–263.</dd>
+        <dt>Should have caught</dt><dd>A unit / integration test that seeds two jobs with one question each and verifies the bank section only renders the active job's question. Cross-job leakage is a classic case the typechecker can't see.</dd>
+        <dt>Prevention added</dt><dd>Phase E added scrape.ts fixture tests + interview bank unit test (the new <code>buildExistingQuestionsBlock</code> helper + its Vitest spec catch the second half of this class of bug — that the dedupe prompt embeds only the current role's questions); mistake tracker pattern entry covers the broader "filter the active scope" rule.</dd>
+      </dl>
+
+      <p class="small-muted">
+        Both rows are appended to <code>reports/mistake-tracker.md</code> with severity = functional, "Caught by automated gates: No", and prevention measure
+        "Phase E added scrape.ts fixture tests + interview bank unit test".
+      </p>
+    </div>
+  </section>
+
+  <section id="next">
+    <summary>Next Steps</summary>
+    <div class="content">
+      <ul>
+        <li><strong>Snippet engine bulk-debounce</strong>: today every <code>create*</code> server action awaits <code>regenerateSnippet</code> + <code>assembleProfileSummary</code> serially. Move the assemble call onto a debounced background job so a profile-import storm doesn't block the user.</li>
+        <li><strong>Scraper fixture coverage</strong>: the current Phase E test covers Greenhouse only. Add fixtures for Lever, Ashby, and Workday so a board redesign breaks a test instead of a user.</li>
+        <li><strong>Real <code>Tooltip</code> primitive</strong>: replace the native <code>title</code> on "Generate more" with the existing Radix tooltip so the gating reason is visible on touch devices too.</li>
+        <li><strong>Real-edit UI for applications</strong>: today the application card edits status + notes but not the job's title / company / locations. Add an inline edit pop-out so users don't have to delete + recreate to fix a typo.</li>
+        <li><strong>Snippet-cache GC</strong>: a periodic sweep to remove <code>profile_summary_snippets</code> rows whose <code>entity_id</code> no longer resolves in its source table.</li>
+        <li><strong>Cost telemetry</strong>: log <code>{model, prompt_tokens, completion_tokens}</code> on every <code>generateSnippet</code> / <code>assembleSummary</code> / <code>polishBullets</code> call so we can validate the "hybrid is cheaper than full-profile" claim with real data.</li>
+        <li><strong>Drop legacy <code>headline</code></strong> once data has been migrated to <code>target_roles</code> / <code>pitch</code> across all imports.</li>
+      </ul>
+    </div>
+  </section>
+
+  </main>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+</body>
+</html>

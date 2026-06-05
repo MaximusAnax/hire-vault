@@ -1,6 +1,16 @@
 import { claudeComplete } from "./write";
 import type { ParsedJobDescription } from "./schemas";
 
+export interface CandidateContext {
+  target_roles?: string[] | null;
+}
+
+function candidateContextBlock(ctx?: CandidateContext | null): string {
+  const roles = (ctx?.target_roles ?? []).filter(Boolean);
+  if (!roles.length) return "";
+  return `\nCandidate context:\nTarget roles: ${roles.join(", ")}\n`;
+}
+
 export interface ExperienceMatch {
   experienceId: string;
   company: string;
@@ -67,13 +77,10 @@ export function scoreExperiencesAgainstJd(
 }
 
 export function computeAtsScore(
-  content: { summary?: string; experiences: { bullet_points: string[] }[] },
+  content: { experiences: { bullet_points: string[] }[] },
   jdKeywords: string[]
 ): { score: number; keywordGaps: string[]; density: Record<string, number> } {
-  const text = [
-    content.summary ?? "",
-    ...content.experiences.flatMap((e) => e.bullet_points),
-  ]
+  const text = content.experiences.flatMap((e) => e.bullet_points)
     .join(" ")
     .toLowerCase();
 
@@ -98,13 +105,16 @@ export function computeAtsScore(
 
 export async function rewriteBullets(
   bullets: string[],
-  jobContext: string
+  jobContext: string,
+  candidate?: CandidateContext | null
 ): Promise<{ bullets: string[]; degraded?: boolean; error?: string }> {
   if (bullets.length === 0) return { bullets: [] };
 
   const result = await claudeComplete(
-    `You rewrite resume bullets for ATS and impact. Return ONLY a JSON array of strings, same count as input. Use strong verbs and metrics when possible.`,
-    `Job context:\n${jobContext.slice(0, 6000)}\n\nRewrite these bullets:\n${JSON.stringify(bullets)}`
+    `You rewrite resume bullets for ATS and impact. Return ONLY a JSON array of strings, same count as input. ` +
+      `Use strong verbs and surface metrics only when they already appear in the source bullets. ` +
+      `Never invent employers, titles, dates, technologies, or numbers. Do not add scope the candidate did not claim.`,
+    `Job context:\n${jobContext.slice(0, 6000)}${candidateContextBlock(candidate)}\nRewrite these bullets:\n${JSON.stringify(bullets)}`
   );
 
   if (!result.text) {

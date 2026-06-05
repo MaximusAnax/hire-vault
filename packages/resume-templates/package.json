@@ -9,13 +9,15 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hirevault/ai-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

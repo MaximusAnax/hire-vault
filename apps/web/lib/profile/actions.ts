@@ -1,262 +1,85 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { requireProfileId } from "@/lib/profile/get-profile";
-function revalidateProfile() {
-  revalidatePath("/profile");
-}
+import * as header from "./actions/header";
+import * as experience from "./actions/experience";
+import * as education from "./actions/education";
+import * as leadership from "./actions/leadership";
+import * as projects from "./actions/projects";
+import * as skills from "./actions/skills";
+import * as courses from "./actions/courses";
 
 export async function updateProfile(formData: FormData) {
-  const supabase = await createClient();
-  const profileId = await requireProfileId();
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      headline: (formData.get("headline") as string) || null,
-      summary: (formData.get("summary") as string) || null,
-      location: (formData.get("location") as string) || null,
-      phone: (formData.get("phone") as string) || null,
-      linkedin_url: (formData.get("linkedin_url") as string) || null,
-      github_url: (formData.get("github_url") as string) || null,
-      portfolio_url: (formData.get("portfolio_url") as string) || null,
-    })
-    .eq("id", profileId);
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+  return header.updateProfile(formData);
 }
 
 export async function createExperience(formData: FormData) {
-  const supabase = await createClient();
-  const profileId = await requireProfileId();
-  const bullets = (formData.get("bullet_points") as string)
-    ?.split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean) ?? [];
-
-  const { error } = await supabase.from("experiences").insert({
-    profile_id: profileId,
-    company: formData.get("company") as string,
-    title: formData.get("title") as string,
-    location: (formData.get("location") as string) || null,
-    start_date: (formData.get("start_date") as string) || null,
-    end_date: (formData.get("end_date") as string) || null,
-    is_current: formData.get("is_current") === "on",
-    bullet_points: bullets,
-    source: "manual",
-  });
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+  return experience.createExperience(formData);
 }
 
 export async function deleteExperience(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("experiences").delete().eq("id", id);
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function createEducation(formData: FormData) {
-  const supabase = await createClient();
-  const profileId = await requireProfileId();
-
-  const { error } = await supabase.from("education").insert({
-    profile_id: profileId,
-    institution: formData.get("institution") as string,
-    degree: (formData.get("degree") as string) || null,
-    field_of_study: (formData.get("field_of_study") as string) || null,
-    start_date: (formData.get("start_date") as string) || null,
-    expected_graduation: (formData.get("expected_graduation") as string) || null,
-    gpa: formData.get("gpa") ? Number(formData.get("gpa")) : null,
-    source: "manual",
-  });
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function deleteEducation(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("education").delete().eq("id", id);
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function createProject(formData: FormData) {
-  const supabase = await createClient();
-  const profileId = await requireProfileId();
-  const tech = (formData.get("technologies") as string)
-    ?.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean) ?? [];
-
-  const { error } = await supabase.from("projects").insert({
-    profile_id: profileId,
-    name: formData.get("name") as string,
-    description: (formData.get("description") as string) || null,
-    url: (formData.get("url") as string) || null,
-    github_url: (formData.get("github_url") as string) || null,
-    technologies: tech,
-    source: "manual",
-  });
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function deleteProject(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("projects").delete().eq("id", id);
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function createSkill(formData: FormData) {
-  const supabase = await createClient();
-  const profileId = await requireProfileId();
-
-  const { error } = await supabase.from("skills").insert({
-    profile_id: profileId,
-    name: formData.get("name") as string,
-    category: (formData.get("category") as "language" | "framework" | "tool" | "soft_skill") || "tool",
-    proficiency_level: formData.get("proficiency_level")
-      ? Number(formData.get("proficiency_level"))
-      : null,
-    source: "manual",
-  });
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function deleteSkill(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("skills").delete().eq("id", id);
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function createCourse(formData: FormData) {
-  const supabase = await createClient();
-  const profileId = await requireProfileId();
-
-  const { error } = await supabase.from("courses").insert({
-    profile_id: profileId,
-    name: formData.get("name") as string,
-    institution: (formData.get("institution") as string) || null,
-    completion_date: (formData.get("completion_date") as string) || null,
-    credential_url: (formData.get("credential_url") as string) || null,
-    source: "manual",
-  });
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
-}
-
-export async function deleteCourse(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("courses").delete().eq("id", id);
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+  return experience.deleteExperience(id);
 }
 
 export async function updateExperience(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const bullets = (formData.get("bullet_points") as string)
-    ?.split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean) ?? [];
+  return experience.updateExperience(id, formData);
+}
 
-  const { error } = await supabase
-    .from("experiences")
-    .update({
-      company: formData.get("company") as string,
-      title: formData.get("title") as string,
-      location: (formData.get("location") as string) || null,
-      start_date: (formData.get("start_date") as string) || null,
-      end_date: (formData.get("end_date") as string) || null,
-      is_current: formData.get("is_current") === "on",
-      bullet_points: bullets,
-    })
-    .eq("id", id);
+export async function createEducation(formData: FormData) {
+  return education.createEducation(formData);
+}
 
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+export async function deleteEducation(id: string) {
+  return education.deleteEducation(id);
 }
 
 export async function updateEducation(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("education")
-    .update({
-      institution: formData.get("institution") as string,
-      degree: (formData.get("degree") as string) || null,
-      field_of_study: (formData.get("field_of_study") as string) || null,
-      start_date: (formData.get("start_date") as string) || null,
-      expected_graduation: (formData.get("expected_graduation") as string) || null,
-      gpa: formData.get("gpa") ? Number(formData.get("gpa")) : null,
-    })
-    .eq("id", id);
+  return education.updateEducation(id, formData);
+}
 
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+export async function createLeadership(formData: FormData) {
+  return leadership.createLeadership(formData);
+}
+
+export async function deleteLeadership(id: string) {
+  return leadership.deleteLeadership(id);
+}
+
+export async function updateLeadership(id: string, formData: FormData) {
+  return leadership.updateLeadership(id, formData);
+}
+
+export async function createProject(formData: FormData) {
+  return projects.createProject(formData);
+}
+
+export async function deleteProject(id: string) {
+  return projects.deleteProject(id);
 }
 
 export async function updateProject(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const tech = (formData.get("technologies") as string)
-    ?.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean) ?? [];
+  return projects.updateProject(id, formData);
+}
 
-  const { error } = await supabase
-    .from("projects")
-    .update({
-      name: formData.get("name") as string,
-      description: (formData.get("description") as string) || null,
-      url: (formData.get("url") as string) || null,
-      github_url: (formData.get("github_url") as string) || null,
-      technologies: tech,
-    })
-    .eq("id", id);
+export async function createSkill(formData: FormData) {
+  return skills.createSkill(formData);
+}
 
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+export async function deleteSkill(id: string) {
+  return skills.deleteSkill(id);
 }
 
 export async function updateSkill(id: string, formData: FormData) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("skills")
-    .update({
-      name: formData.get("name") as string,
-      category: (formData.get("category") as "language" | "framework" | "tool" | "soft_skill") || "tool",
-      proficiency_level: formData.get("proficiency_level")
-        ? Number(formData.get("proficiency_level"))
-        : null,
-    })
-    .eq("id", id);
-
-  if (error) return { error: error.message };
-  revalidateProfile();
-  return { success: true };
+  return skills.updateSkill(id, formData);
 }
 
-export type DeleteAction = (id: string) => Promise<{ error?: string; success?: boolean }>;
+export async function createCourse(formData: FormData) {
+  return courses.createCourse(formData);
+}
+
+export async function deleteCourse(id: string) {
+  return courses.deleteCourse(id);
+}
+
+export async function updateCourse(id: string, formData: FormData) {
+  return courses.updateCourse(id, formData);
+}

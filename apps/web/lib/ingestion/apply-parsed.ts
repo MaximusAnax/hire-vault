@@ -9,6 +9,8 @@ type ApplyStats = {
   conflicts: { section: ProfileSection; existingId: string; incoming: Record<string, unknown> }[];
 };
 
+const BULLET_SECTIONS = new Set<ProfileSection>(["experiences", "leadership"]);
+
 async function upsertSection(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   profileId: string,
@@ -25,9 +27,10 @@ async function upsertSection(
     const match = existing.find((r) => r.source_hash === hash);
 
     if (!match) {
+      const row = prepareRow(section, item);
       const { error } = await supabase.from(table).insert({
         profile_id: profileId,
-        ...item,
+        ...row,
         source,
         source_hash: hash,
       });
@@ -42,9 +45,9 @@ async function upsertSection(
       continue;
     }
 
-    const merged = mergeRecords(row as Record<string, unknown>, item);
+    const merged = mergeRecords(row as Record<string, unknown>, prepareRow(section, item));
     const hasSubstantiveDiff =
-      section === "experiences" &&
+      BULLET_SECTIONS.has(section) &&
       JSON.stringify((row as { bullet_points?: string[] }).bullet_points ?? []) !==
         JSON.stringify((item.bullet_points as string[]) ?? []);
 
@@ -65,6 +68,33 @@ async function upsertSection(
   return stats;
 }
 
+function prepareRow(section: ProfileSection, item: Record<string, unknown>): Record<string, unknown> {
+  if (section === "skills") {
+    return {
+      ...item,
+      category: item.category ?? "tool",
+    };
+  }
+  if (section === "experiences" || section === "leadership") {
+    return {
+      ...item,
+      bullet_points: item.bullet_points ?? [],
+      is_current: item.is_current ?? false,
+    };
+  }
+  if (section === "education") {
+    return {
+      ...item,
+      relevant_courses: item.relevant_courses ?? [],
+    };
+  }
+  return item;
+}
+
+function isParsedResume(parsed: ParsedResume | LinkedInImport): parsed is ParsedResume {
+  return "leadership" in parsed || "full_name" in parsed || "courses" in parsed;
+}
+
 export async function applyParsedProfile(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   profileId: string,
@@ -79,15 +109,17 @@ export async function applyParsedProfile(
     profileUpdated: false,
   };
 
-  const profileFields = {
-    headline: parsed.headline ?? null,
-    summary: parsed.summary ?? null,
+  const resume = isParsedResume(parsed) ? parsed : null;
+
+  const profileFields: Record<string, unknown> = {
+    headline: parsed.headline ?? resume?.full_name ?? null,
+    full_name: resume?.full_name ?? parsed.headline ?? null,
+    email: resume?.email ?? null,
     location: parsed.location ?? null,
-    linkedin_url: "linkedin_url" in parsed ? parsed.linkedin_url ?? null : null,
-    github_url: "github_url" in parsed ? (parsed as ParsedResume).github_url ?? null : null,
-    portfolio_url:
-      "portfolio_url" in parsed ? (parsed as ParsedResume).portfolio_url ?? null : null,
-    phone: "phone" in parsed ? (parsed as ParsedResume).phone ?? null : null,
+    linkedin_url: parsed.linkedin_url ?? null,
+    github_url: resume?.github_url ?? null,
+    portfolio_url: resume?.portfolio_url ?? null,
+    phone: resume?.phone ?? null,
     source,
     raw_resume_data: parsed as unknown as Record<string, unknown>,
   };
@@ -98,24 +130,24 @@ export async function applyParsedProfile(
     .eq("id", profileId);
   totals.profileUpdated = !profileError;
 
-  const [exp, edu, proj, skills, courses] = await Promise.all([
+  const [exp, edu, proj, skills, courses, leadership] = await Promise.all([
     supabase.from("experiences").select("id, source_hash").eq("profile_id", profileId),
     supabase.from("education").select("id, source_hash").eq("profile_id", profileId),
     supabase.from("projects").select("id, source_hash").eq("profile_id", profileId),
     supabase.from("skills").select("id, source_hash").eq("profile_id", profileId),
     supabase.from("courses").select("id, source_hash").eq("profile_id", profileId),
+    supabase.from("leadership").select("id, source_hash").eq("profile_id", profileId),
   ]);
 
   const sections: { section: ProfileSection; items: Record<string, unknown>[] | undefined }[] = [
     { section: "experiences", items: parsed.experiences as Record<string, unknown>[] | undefined },
     { section: "education", items: parsed.education as Record<string, unknown>[] | undefined },
+    { section: "leadership", items: resume?.leadership as Record<string, unknown>[] | undefined },
     { section: "projects", items: parsed.projects as Record<string, unknown>[] | undefined },
     { section: "skills", items: parsed.skills as Record<string, unknown>[] | undefined },
     {
       section: "courses",
-      items: ("courses" in parsed ? parsed.courses : undefined) as
-        | Record<string, unknown>[]
-        | undefined,
+      items: resume?.courses as Record<string, unknown>[] | undefined,
     },
   ];
 
@@ -125,6 +157,7 @@ export async function applyParsedProfile(
     projects: (proj.data ?? []) as ExistingRow[],
     skills: (skills.data ?? []) as ExistingRow[],
     courses: (courses.data ?? []) as ExistingRow[],
+    leadership: (leadership.data ?? []) as ExistingRow[],
   };
 
   for (const { section, items } of sections) {

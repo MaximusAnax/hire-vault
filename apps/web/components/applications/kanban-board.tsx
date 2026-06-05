@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import type { ApplicationWithJob, ApplicationStatus } from "@hirevault/types";
 import { PIPELINE_COLUMNS } from "@hirevault/types";
 import { updateApplicationStatus } from "@/lib/applications/actions";
+import type { ResumeSummary } from "@/lib/resumes/resume-summary";
 import { ApplicationCard } from "./application-card";
 
 const COLUMN_LABELS: Record<ApplicationStatus, string> = {
@@ -16,7 +17,13 @@ const COLUMN_LABELS: Record<ApplicationStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
-export function KanbanBoard({ applications }: { applications: ApplicationWithJob[] }) {
+export function KanbanBoard({
+  applications,
+  resumeSummaries,
+}: {
+  applications: ApplicationWithJob[];
+  resumeSummaries: Record<string, ResumeSummary>;
+}) {
   const [pending, startTransition] = useTransition();
 
   const byStatus = (status: ApplicationStatus) =>
@@ -47,7 +54,11 @@ export function KanbanBoard({ applications }: { applications: ApplicationWithJob
           </div>
           <div className={`space-y-2 min-h-[80px] ${pending ? "opacity-70" : ""}`}>
             {byStatus(status).map((app) => (
-              <ApplicationCard key={app.id} application={app} />
+              <ApplicationCard
+                key={app.id}
+                application={app}
+                resumeSummary={resumeSummaries[app.id]}
+              />
             ))}
           </div>
         </div>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HireVault — Orchestrated Build Loop (Iteration 2)</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root { --bg: #0f1117; --card: #18181b; --border: #27272a; --text: #fafafa; --muted: #a1a1aa; --primary: #8b5cf6; --accent: #3b82f6; --green: #22c55e; --yellow: #eab308; --red: #ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; margin: 0; padding: 2rem; max-width: 1100px; margin-inline: auto; }
+    a { color: var(--accent); }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .report-layout { display: grid; grid-template-columns: minmax(220px, 280px) 1fr; gap: 2rem; align-items: start; }
+    .report-main { min-width: 0; }
+    nav.toc { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; position: sticky; top: 1rem; align-self: start; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    nav.toc ul { margin: 0; padding-left: 1.25rem; }
+    nav.toc a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+    section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; scroll-margin-top: 1.5rem; }
+    @media (max-width: 768px) { .report-layout { grid-template-columns: 1fr; } nav.toc { position: static; max-height: none; margin-bottom: 1rem; } }
+    section summary { cursor: pointer; padding: 1rem 1.25rem; font-weight: 600; list-style: none; }
+    section summary::-webkit-details-marker { display: none; }
+    section summary::after { content: " ▾"; color: var(--muted); float: right; }
+    .content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--border); }
+    pre { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.8rem; }
+    code { font-family: "JetBrains Mono", monospace; background: #27272a; padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.85em; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+    th { background: #27272a; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .green { background: rgba(34,197,94,0.2); color: var(--green); }
+    .yellow { background: rgba(234,179,8,0.2); color: var(--yellow); }
+    .red { background: rgba(239,68,68,0.2); color: var(--red); }
+    .mermaid { background: #09090b; border-radius: 6px; padding: 1rem; }
+    .phase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+    .phase-card { background: #09090b; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; font-size: 0.9rem; }
+    .panel-highlight { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.35); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .panel-highlight h2 { margin-top: 0; color: var(--primary); }
+    .small-muted { color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>HireVault — Orchestrated Build Loop</h1>
+  <p class="subtitle">Iteration 2 plan companion · May 28, 2026 · Continue round2 · Builder vs Adversarial Tester · M1–M5 milestones</p>
+
+  <div class="report-layout">
+  <nav class="toc">
+    <strong>Table of contents</strong>
+    <ul>
+      <li><a href="#decisions">Decisions Locked In</a></li>
+      <li><a href="#recommendation">Continue vs Nuke</a></li>
+      <li><a href="#milestones">Milestones M1–M5</a></li>
+      <li><a href="#m2-capture">M2 Job Capture</a></li>
+      <li><a href="#backend">Backend Automation</a></li>
+      <li><a href="#orchestration">Orchestration Harness</a></li>
+      <li><a href="#execution">Execution Mode</a></li>
+      <li><a href="#m4-pdf">M4 PDF Renderer</a></li>
+      <li><a href="#order">Execution Order</a></li>
+      <li><a href="#status">Todo Status</a></li>
+    </ul>
+  </nav>
+
+  <main class="report-main">
+
+  <div id="decisions" class="panel-highlight">
+    <h2>Decisions Locked In</h2>
+    <ul>
+      <li><strong>Continue round2</strong> — do not restart; ~75–80% of both plans is already shipped.</li>
+      <li><strong>Preview branch DB</strong> — loop migrations run on a Supabase preview branch of project <code>vnybrxanwlklbtcuizxw</code>; promote only after Tester PASS.</li>
+      <li><strong>Local + supervised</strong> — bounded iterations, <code>requireHumanApproval: true</code>, no paid VM, no unbounded auto-loop yet.</li>
+      <li><strong>CI gate only</strong> — GitHub Actions runs <code>pnpm quality:check</code> on push/PR; not the loop driver.</li>
+      <li><strong>PDF</strong> — <code>ResumeRenderer</code> in <a href="../packages/resume-templates">packages/resume-templates</a>; default Chromium HTML→PDF; <code>LatexRenderer</code> stub for your .tex later.</li>
+      <li><strong>M2 bar</strong> — save a real job in ~10s: in-app paste-URL/JD + working Chrome extension → <code>/api/extension/capture</code>.</li>
+    </ul>
+  </div>
+
+  <section id="recommendation" open>
+    <summary>Recommendation: Continue round2</summary>
+    <div class="content">
+      <p>Real Supabase auth, RLS, dual-provider AI, Kanban apps, resume tailoring, interview prep, extension scaffold, six migrations, and Vitest. Remaining work is finishable gaps driven by milestone specs — not a greenfield rewrite.</p>
+      <div class="mermaid">
+flowchart LR
+  nuke["Nuke and restart"] --> wasted["~75% rework"]
+  cont["Continue round2"] --> done["Core loop production-ready"]
+      </div>
+    </div>
+  </section>
+
+  <section id="milestones">
+    <summary>Milestones M1–M5</summary>
+    <div class="content">
+      <div class="phase-grid">
+        <div class="phase-card"><strong>M1 Profile fidelity</strong><br/>Import/parse accuracy, dedup, hybrid summary, edit-everywhere, no data loss.</div>
+        <div class="phase-card"><strong>M2 Job capture</strong><br/>Sub-10s paste flow, multi-board scrape, extension E2E.</div>
+        <div class="phase-card"><strong>M3 Resume tailoring</strong><br/>JD match, grounded Claude rewrite, ATS score.</div>
+        <div class="phase-card"><strong>M4 Real PDF</strong><br/>Chromium renderer, Storage upload, <code>pdf_storage_path</code>.</div>
+        <div class="phase-card"><strong>M5 Interview prep</strong><br/>Per-role bank, grounded answers, gating, dedup-aware generate-more.</div>
+      </div>
+      <p class="small-muted">Deferred: coaching depth, Whisper mocks, Edge Functions, Stripe.</p>
+    </div>
+  </section>
+
+  <section id="m2-capture">
+    <summary>M2 — Frictionless job capture</summary>
+    <div class="content">
+      <div class="mermaid">
+flowchart LR
+  paste["Paste URL or JD"] --> parse["parseAndPreviewJob"]
+  parse --> preview["Preview card"]
+  preview --> save["createJob + application"]
+  ext["Extension one-click"] --> api["POST /api/extension/capture"]
+  api --> save
+  save --> board["Kanban"]
+      </div>
+      <table>
+        <tr><th>Track</th><th>Work</th></tr>
+        <tr><td>In-app</td><td>Harden <code>scrape.ts</code>, LinkedIn blocked hint, optimistic kanban insert, keyboard Enter on smart capture.</td></tr>
+        <tr><td>Extension</td><td>MV3 scrapers, popup pairing, service worker → capture API, fixture-page certification in Tester rubric.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="backend">
+    <summary>Backend automation (no manual SQL paste)</summary>
+    <div class="content">
+      <div class="mermaid">
+flowchart TB
+  mig["packages/supabase/migrations"] --> wrap["scripts/db wrapper"]
+  wrap -->|"db push forward-only"| branchdb[("Preview branch DB")]
+  tester["Tester read-only MCP"] --> branchdb
+      </div>
+      <ul>
+        <li><code>supabase init</code> + <code>link --project-ref vnybrxanwlklbtcuizxw</code></li>
+        <li>Wrapper whitelists: <code>migration new</code>, <code>db push</code>, <code>migration list</code>, <code>db diff</code>, <code>db pull</code></li>
+        <li>Denylist: <code>db reset</code>, destructive SQL without human approval</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="orchestration">
+    <summary>Orchestration harness</summary>
+    <div class="content">
+      <div class="mermaid">
+flowchart TB
+  cfg["orchestration/config.json"] --> driver["packages/orchestrator"]
+  driver --> builder["Builder Agent"]
+  builder --> repo["Working tree + handoff.json"]
+  repo --> tester["Adversarial Tester"]
+  tester --> verdict["verdict.json"]
+      </div>
+      <p><code>verdict.json</code>: PASS only if typecheck, lint, test, build pass AND every acceptance check passes AND zero blocker/major findings.</p>
+      <ul>
+        <li><code>orchestration/prompts/builder.md</code> — embeds <code>reports/implementation-notes.html</code> directive</li>
+        <li><code>orchestration/prompts/tester.md</code> — hostile rubric + read-only DB</li>
+        <li><code>orchestration/milestones/m1–m5.md</code> — specs + acceptance tables</li>
+        <li><code>orchestration/log.jsonl</code> — append-only run observability</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="execution">
+    <summary>Execution — local supervised now</summary>
+    <div class="content">
+      <table>
+        <tr><th>Now</th><td><code>runtime: "local"</code>, low <code>maxIterations</code>, human checkpoint after each PASS.</td></tr>
+        <tr><th>CI</th><td>GitHub Actions <code>quality:check</code> on push/PR.</td></tr>
+        <tr><th>Later</th><td><code>runtime: "cloud"</code>, VM or event-driven Actions — deferred.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="m4-pdf">
+    <summary>M4 — Resume PDF (pluggable renderer)</summary>
+    <div class="content">
+      <pre>interface ResumeRenderer {
+  renderToPdf(content, template): Promise&lt;Buffer&gt;
+}</pre>
+      <p>Default: HTML/CSS → Chromium PDF. Stub: <code>LatexRenderer</code>. Upload to <code>resumes</code> bucket; set <code>tailored_resumes.pdf_storage_path</code>.</p>
+    </div>
+  </section>
+
+  <section id="order">
+    <summary>Execution order</summary>
+    <div class="content">
+      <ol>
+        <li>Commit refinement-iteration-1 baseline on <code>round2</code></li>
+        <li>Supabase CLI + denylisted <code>scripts/db</code> + read-only Tester MCP</li>
+        <li><code>packages/orchestrator</code> + prompts + milestone specs</li>
+        <li>Prototype Builder↔Tester loop on M1 (in-session subagents)</li>
+        <li>Run M1→M5 until each certifies PASS</li>
+        <li><code>reports/implementation-notes.html</code> + final report + mistake-tracker</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="status">
+    <summary>Todo status (plan YAML)</summary>
+    <div class="content">
+      <table>
+        <tr><th>Id</th><th>Summary</th><th>Status</th></tr>
+        <tr><td>baseline-commit</td><td>Commit 39 refinement files; quality:check gate</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>supabase-automation</td><td>init/link, db wrapper, preview branch, read-only MCP</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>build-harness</td><td>packages/orchestrator + verdict schema</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>author-role-prompts</td><td>builder.md + tester.md</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>author-milestone-specs</td><td>m1–m5 specs + rubrics</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>prototype-loop</td><td>In-session M1 loop validation</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>run-m1 … run-m5</td><td>Milestone certification</td><td><span class="badge green">DONE</span></td></tr>
+        <tr><td>final-report</td><td>implementation-notes + iteration report</td><td><span class="badge green">DONE</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  </main>
+  </div>
+  <script>mermaid.initialize({ startOnLoad: true, theme: "dark" });</script>
+</body>
+</html>

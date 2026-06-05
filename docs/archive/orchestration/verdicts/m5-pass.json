@@ -1,0 +1,13 @@
+{
+  "verdict": "PASS",
+  "milestone": "m5",
+  "iteration": 1,
+  "gates": { "typecheck": true, "lint": true, "test": true, "build": true },
+  "acceptanceChecks": [
+    { "id": "m5-gates", "status": "pass", "evidence": "pnpm quality:check" },
+    { "id": "m5-interviews-tests", "status": "pass", "evidence": "interviews.test.ts" },
+    { "id": "m5-per-role-filter", "status": "pass", "evidence": "interview-prep.tsx jobId filter" },
+    { "id": "m5-generate-more-gate", "status": "pass", "evidence": "interview-prep gated generate more" }
+  ],
+  "findings": []
+}

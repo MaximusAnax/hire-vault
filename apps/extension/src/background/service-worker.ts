@@ -17,14 +17,16 @@ async function syncJob(
   apiBase: string,
   token: string
 ): Promise<{ ok?: boolean; error?: string; jobId?: string; applicationId?: string }> {
-  if (!apiBase?.trim() || !token?.trim()) {
+  const base = apiBase?.trim().replace(/\/$/, "");
+  const cleanToken = token?.trim().replace(/^\s*bearer\s+/i, "").replace(/[\u200B-\u200D\uFEFF]/g, "");
+  if (!base || !cleanToken) {
     return { error: "Configure API base URL and extension token in popup settings." };
   }
-  const res = await fetch(`${apiBase.replace(/\/$/, "")}/api/extension/capture`, {
+  const res = await fetch(`${base}/api/extension/capture`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${cleanToken}`,
     },
     body: JSON.stringify(payload),
   });

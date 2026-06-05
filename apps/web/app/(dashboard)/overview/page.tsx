@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { getApplicationStats, getApplicationsWithJobs } from "@/lib/applications/queries";
-import { getDashboardInsights } from "@/lib/insights/queries";
+import { resumeBuilderUrl } from "@/lib/resumes/urls";
 import { PipelineAnalytics } from "@/components/applications/pipeline-analytics";
-import { InsightsPanel } from "@/components/insights/insights-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default async function OverviewPage() {
-  const [stats, recent, insights] = await Promise.all([
+  const [stats, recent] = await Promise.all([
     getApplicationStats(),
     getApplicationsWithJobs({ sort: "updated" }),
-    getDashboardInsights(),
   ]);
 
   const recentFive = recent.slice(0, 5);
@@ -20,7 +18,7 @@ export default async function OverviewPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
         <p className="text-muted-foreground">
-          Pipeline health, coaching insights, and interview performance trends.
+          Pipeline health and quick links to capture jobs, tailor resumes, and prep interviews.
         </p>
       </div>
 
@@ -51,22 +49,13 @@ export default async function OverviewPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Profile strength</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Offers</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{insights.profileStrength?.overall ?? "—"}</p>
+            <p className="text-3xl font-bold">{stats.byStatus.offer ?? 0}</p>
           </CardContent>
         </Card>
       </div>
-
-      <InsightsPanel
-        profileOverall={insights.profileStrength?.overall ?? null}
-        sections={insights.profileStrength?.sections ?? []}
-        strategies={insights.strategies}
-        skillGaps={insights.skillGaps}
-        practiceAvg={insights.practiceAvg}
-        mockTrend={insights.mockTrend}
-      />
 
       <PipelineAnalytics
         pipeline={stats.pipeline}
@@ -88,11 +77,21 @@ export default async function OverviewPage() {
           ) : (
             <ul className="text-sm space-y-2">
               {recentFive.map((a) => (
-                <li key={a.id} className="flex justify-between">
+                <li key={a.id} className="flex justify-between items-center gap-3">
                   <span>
                     {a.job?.title} @ {a.job?.company}
                   </span>
-                  <span className="text-muted-foreground capitalize">{a.status}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {a.job_id ? (
+                      <Link
+                        href={resumeBuilderUrl(a.id)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Resume
+                      </Link>
+                    ) : null}
+                    <span className="text-muted-foreground capitalize text-xs">{a.status}</span>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -100,14 +99,24 @@ export default async function OverviewPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Applications</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button size="sm" asChild>
+              <Link href="/applications">Capture & track jobs</Link>
+            </Button>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Resumes</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button size="sm" asChild>
-              <Link href="/resumes">Tailor resume</Link>
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/resumes">Tailor & export PDF</Link>
             </Button>
           </CardContent>
         </Card>
@@ -123,11 +132,11 @@ export default async function OverviewPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Mock interview</CardTitle>
+            <CardTitle className="text-base">Profile</CardTitle>
           </CardHeader>
           <CardContent>
             <Button size="sm" variant="outline" asChild>
-              <Link href="/mock">Start session</Link>
+              <Link href="/profile">Edit master data</Link>
             </Button>
           </CardContent>
         </Card>

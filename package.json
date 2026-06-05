@@ -9,9 +9,11 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "quality:check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
+    "quality:check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "db": "bash scripts/db.sh"
   },
   "devDependencies": {
+    "dotenv": "^16.4.7",
     "prettier": "^3.4.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"

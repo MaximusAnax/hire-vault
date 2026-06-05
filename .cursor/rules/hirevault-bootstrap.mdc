@@ -1,0 +1,49 @@
+---
+description: HireVault agent bootstrap — where to look first, read order, scope guardrails
+alwaysApply: true
+---
+
+# HireVault bootstrap
+
+Monorepo: Next.js app (`apps/web`), Chrome extension (`apps/extension`), shared packages (`packages/*`). Product loop: **capture → applications → resumes → interviews**.
+
+## How to begin (save context)
+
+Do **not** read the whole repo or `docs/archive/` unless the user asks for history.
+
+| User intent (keywords) | Read first | Code entry |
+|------------------------|------------|------------|
+| Applications, pipeline, kanban, list | `docs/NAVIGATION.md` (Applications) | `lib/applications/`, `components/applications/` |
+| Resumes, tailor, PDF, ATS | `docs/decisions/phase-5.md` | `lib/resumes/`, `packages/ai-core/src/resume.ts` |
+| Extension, scraper, capture | `docs/decisions/phase-4.md` | `apps/extension/`, `app/api/extension/capture/` |
+| Profile, import, LinkedIn | `docs/decisions/phase-1.md` | `lib/profile/`, `lib/ingestion/` |
+| Interviews, questions, prep | `docs/decisions/phase-6.md` | `lib/interviews/`, `components/interviews/` |
+| Schema, RLS, auth | `docs/setup/database.md` | `packages/supabase/migrations/`, `lib/supabase/` |
+| Env, OAuth, deploy | `docs/setup/environment.md` | repo root `.env` only |
+| Bug / regression | `docs/OPERATIONS.md` | then the failing module only |
+
+**Always skim** `docs/PRODUCT.md` out-of-scope table before adding features.
+
+**Living snapshot** (routes, env, gaps): `docs/STATE.md` — only when routes or env matter.
+
+Full hub: `docs/README.md`. Human/agent entry: `AGENTS.md`.
+
+## Out of scope (do not reintroduce)
+
+Mock interviews, coaching insights, pitch/summary engine, standalone `/jobs` route, HTML resume PDF. Historical ADRs: `docs/decisions/phase-7.md`, `phase-8.md`.
+
+## Commands
+
+```bash
+pnpm dev              # web :3000
+pnpm quality:check    # typecheck + lint + test + build — run before finishing code tasks
+pnpm db db push       # apply migrations (never db reset in automation)
+```
+
+## Conventions
+
+- Reads: `lib/{domain}/queries.ts` · Mutations: `lib/{domain}/actions.ts` (`"use server"`)
+- Applications → Resumes link: `resumeBuilderUrl()` in `apps/web/lib/resumes/urls.ts`
+- Schema changes: new file in `packages/supabase/migrations/` → update `packages/types` if shapes change
+- Env: repo root `.env` only — never `apps/web/.env.local`
+- Minimal diff; match surrounding code style; no marketing fluff in UI

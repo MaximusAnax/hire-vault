@@ -8,21 +8,21 @@
       * { box-sizing: border-box; }
       body {
         font-family: system-ui, sans-serif;
-        width: 320px;
+        width: 300px;
         margin: 0;
         padding: 12px;
         background: #0f1117;
         color: #e4e4e7;
         font-size: 12px;
       }
-      h1 { font-size: 14px; margin: 0 0 8px; }
-      .muted { color: #a1a1aa; margin: 0 0 8px; }
+      h1 { font-size: 14px; margin: 0 0 6px; }
+      .muted { color: #a1a1aa; margin: 0 0 8px; line-height: 1.4; }
       .card {
         background: #18181b;
         border: 1px solid #27272a;
         border-radius: 8px;
         padding: 10px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
       label { display: block; margin: 6px 0 2px; color: #a1a1aa; }
       input, textarea {
@@ -34,8 +34,9 @@
         padding: 6px 8px;
         font-size: 12px;
       }
-      textarea { min-height: 72px; resize: vertical; }
-      button {
+      textarea { min-height: 88px; resize: vertical; }
+      button, a.btn-link {
+        display: block;
         width: 100%;
         margin-top: 6px;
         padding: 8px;
@@ -44,13 +45,24 @@
         font-weight: 600;
         cursor: pointer;
         font-size: 12px;
+        text-align: center;
+        text-decoration: none;
       }
       .primary { background: #8b5cf6; color: #fff; }
       .secondary { background: #27272a; color: #e4e4e7; }
       .hidden { display: none; }
-      #status { min-height: 1.2em; }
-      .row { display: flex; gap: 6px; }
-      .row button { flex: 1; }
+      #job-preview { margin-bottom: 4px; }
+      #job-preview strong { display: block; margin-bottom: 2px; }
+      details { margin-top: 8px; }
+      details summary {
+        cursor: pointer;
+        color: #a1a1aa;
+        font-size: 11px;
+        list-style: none;
+      }
+      details summary::-webkit-details-marker { display: none; }
+      details[open] summary { margin-bottom: 8px; color: #e4e4e7; }
+      .settings summary { font-weight: 600; }
     </style>
   </head>
   <body>
@@ -58,36 +70,33 @@
     <p id="status" class="muted">Loading…</p>
 
     <div class="card">
-      <div><strong id="job-title">—</strong></div>
-      <div class="muted" id="job-company">—</div>
-      <div class="muted">Source: <span id="job-source">—</span></div>
-      <div class="row">
-        <button type="button" class="secondary" id="btn-scrape">Re-scrape</button>
-        <button type="button" class="primary" id="btn-sync">Save to HireVault</button>
+      <div id="job-preview">
+        <strong id="job-title">No job captured yet</strong>
+        <span class="muted" id="job-company"></span>
       </div>
-      <button type="button" class="secondary" id="btn-paste-open">Manual paste</button>
+      <button type="button" class="secondary" id="btn-capture">Capture from page</button>
+      <button type="button" class="primary" id="btn-sync">Save to HireVault</button>
+      <a id="open-app" class="btn-link secondary hidden" target="_blank" rel="noopener">Open in HireVault</a>
+
+      <details id="paste-details">
+        <summary>Paste job manually</summary>
+        <label>Title</label>
+        <input id="paste-title" />
+        <label>Company</label>
+        <input id="paste-company" />
+        <label>Description</label>
+        <textarea id="paste-desc" placeholder="Paste the job posting text…"></textarea>
+        <button type="button" class="secondary" id="btn-paste-save">Use pasted job</button>
+      </details>
     </div>
 
-    <div class="card">
+    <details class="card settings">
+      <summary>Settings</summary>
       <label for="api-base">App URL</label>
       <input id="api-base" type="url" placeholder="http://localhost:3000" />
       <label for="api-token">Extension token</label>
       <input id="api-token" type="password" placeholder="From Settings → Extension" />
-    </div>
-
-    <div id="paste-modal" class="card hidden">
-      <strong>Manual paste</strong>
-      <label>Title</label>
-      <input id="paste-title" />
-      <label>Company</label>
-      <input id="paste-company" />
-      <label>Description</label>
-      <textarea id="paste-desc"></textarea>
-      <div class="row">
-        <button type="button" class="secondary" id="btn-paste-cancel">Cancel</button>
-        <button type="button" class="primary" id="btn-paste-save">Use pasted job</button>
-      </div>
-    </div>
+    </details>
 
     <script type="module" src="popup.js"></script>
   </body>

@@ -1,5 +1,7 @@
 # Phase 7 — Mock Interviews
 
+> **Historical — superseded.** Mock interviews were removed in the lean recruitment pass. The `mock_sessions` table was dropped. Current interview prep is question-bank only — see [phase-6.md](phase-6.md) and [PRODUCT.md](../PRODUCT.md).
+
 ## Decisions
 
 1. **Turn-based conversation_log JSON** — Stores interviewer/candidate turns with timestamps; no WebRTC.

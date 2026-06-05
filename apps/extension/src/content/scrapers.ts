@@ -1,7 +1,16 @@
 import type { ScrapedJob } from "../shared/types";
+import {
+  applyPageDumpFallback,
+  stripDocumentTitle,
+} from "./scrapers-logic";
 
 function text(el: Element | null): string {
   return el?.textContent?.trim() ?? "";
+}
+
+function innerText(el: Element | null): string {
+  const node = el as HTMLElement | null;
+  return node?.innerText?.trim() ?? el?.textContent?.trim() ?? "";
 }
 
 function meta(prop: string): string {
@@ -19,7 +28,47 @@ export function detectSource(): string {
   return "generic";
 }
 
-export function scrapeJobPage(): ScrapedJob | null {
+export function pickPageInnerText(): string {
+  const root =
+    document.querySelector("main") ||
+    document.querySelector("article") ||
+    document.querySelector("[role='main']") ||
+    document.body;
+  return innerText(root).replace(/\n{3,}/g, "\n\n").trim();
+}
+
+export function pickTitleFromPage(): string {
+  return (
+    text(document.querySelector("h1")) ||
+    meta("og:title") ||
+    stripDocumentTitle(document.title) ||
+    ""
+  );
+}
+
+export function pickCompanyFromPage(): string {
+  return (
+    text(document.querySelector("[class*='company']")) ||
+    text(document.querySelector("[data-company]")) ||
+    text(document.querySelector(".company-name")) ||
+    location.hostname.replace(/^www\./, "").split(".")[0] ||
+    "Unknown company"
+  );
+}
+
+export function scrapePageDump(): ScrapedJob {
+  const title = pickTitleFromPage() || stripDocumentTitle(document.title) || "Untitled role";
+  const company = pickCompanyFromPage();
+  const description = pickPageInnerText();
+  return build(title, company, description, "page_dump", "low");
+}
+
+export function scrapeJobPage(options?: { forcePageDump?: boolean }): ScrapedJob | null {
+  if (options?.forcePageDump) {
+    const dump = scrapePageDump();
+    return dump.title.trim().length >= 3 ? dump : null;
+  }
+
   const source = detectSource();
   const scrapers: Record<string, () => ScrapedJob | null> = {
     linkedin: scrapeLinkedIn,
@@ -27,12 +76,17 @@ export function scrapeJobPage(): ScrapedJob | null {
     lever: scrapeLever,
     workday: scrapeWorkday,
     ashby: scrapeAshby,
+    smartrecruiters: scrapeSmartRecruiters,
     generic: scrapeGeneric,
   };
   const fn = scrapers[source] ?? scrapers.generic;
-  const result = fn();
-  if (result) return result;
-  return scrapeGeneric();
+  let structured = fn();
+  if (!structured && source !== "generic") {
+    structured = scrapeGeneric();
+  }
+
+  const dump = scrapePageDump();
+  return applyPageDumpFallback(structured, dump);
 }
 
 function scrapeLinkedIn(): ScrapedJob | null {
@@ -51,10 +105,22 @@ function scrapeLinkedIn(): ScrapedJob | null {
   return build(title, company || "Unknown", desc, "linkedin", desc.length > 200 ? "high" : "medium");
 }
 
+function parseGreenhouseDocumentTitle(pageTitle: string): { title?: string; company?: string } {
+  const m = pageTitle.match(/job\s+application\s+for\s+(.+?)\s+at\s+(.+)/i);
+  if (m) return { title: m[1].trim(), company: m[2].trim() };
+  return {};
+}
+
 function scrapeGreenhouse(): ScrapedJob | null {
-  const title = text(document.querySelector("#app h1")) || text(document.querySelector("h1"));
+  const fromPageTitle = parseGreenhouseDocumentTitle(document.title);
+  const title =
+    text(document.querySelector("#app h1")) ||
+    text(document.querySelector("h1")) ||
+    fromPageTitle.title ||
+    "";
   const company =
     text(document.querySelector(".company-name")) ||
+    fromPageTitle.company ||
     document.title.split("|")[0]?.trim() ||
     "Unknown";
   const desc = text(document.querySelector("#content")) || text(document.querySelector(".content"));
@@ -87,20 +153,34 @@ function scrapeAshby(): ScrapedJob | null {
   return build(title, "Company", desc, "ashby", "medium");
 }
 
+function scrapeSmartRecruiters(): ScrapedJob | null {
+  const title =
+    text(document.querySelector("h1[itemprop='title']")) ||
+    text(document.querySelector("h1")) ||
+    meta("og:title");
+  const company =
+    text(document.querySelector("[itemprop='hiringOrganization']")) ||
+    text(document.querySelector(".company-name")) ||
+    text(document.querySelector("header a"));
+  const desc =
+    text(document.querySelector("[itemprop='description']")) ||
+    text(document.querySelector(".job-section")) ||
+    text(document.querySelector("main"));
+  if (!title) return null;
+  return build(title, company || "Unknown company", desc, "smartrecruiters", desc.length > 200 ? "high" : "medium");
+}
+
 function scrapeGeneric(): ScrapedJob | null {
   const title =
     meta("og:title") ||
     text(document.querySelector("h1")) ||
-    document.title.split("|")[0]?.trim();
+    stripDocumentTitle(document.title);
   const desc =
     meta("og:description") ||
     text(document.querySelector("[class*='description']")) ||
     text(document.querySelector("article")) ||
     text(document.querySelector("main"));
-  const company =
-    text(document.querySelector("[class*='company']")) ||
-    text(document.querySelector("[data-company]")) ||
-    "Unknown company";
+  const company = pickCompanyFromPage();
   if (!title || title.length < 3) return null;
   return build(title, company, desc, "generic", desc.length > 100 ? "medium" : "low");
 }

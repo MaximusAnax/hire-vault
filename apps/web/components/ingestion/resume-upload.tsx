@@ -3,9 +3,21 @@
 import { useState, useTransition } from "react";
 import { Upload } from "lucide-react";
 import { uploadAndParseResume } from "@/lib/ingestion/actions";
+import type { ImportSectionCounts } from "@/lib/ingestion/normalize-parsed-resume";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+function formatSectionSummary(counts: ImportSectionCounts): string {
+  const parts: string[] = [];
+  if (counts.experiences) parts.push(`${counts.experiences} experience`);
+  if (counts.leadership) parts.push(`${counts.leadership} leadership`);
+  if (counts.education) parts.push(`${counts.education} education`);
+  if (counts.courses) parts.push(`${counts.courses} courses`);
+  if (counts.skills) parts.push(`${counts.skills} skills`);
+  if (counts.projects) parts.push(`${counts.projects} projects`);
+  return parts.length ? parts.join(", ") : "profile fields";
+}
 
 export function ResumeUpload() {
   const [pending, startTransition] = useTransition();
@@ -25,8 +37,11 @@ export function ResumeUpload() {
           if (result.error) {
             setError(result.error + (result.hint ? ` — ${result.hint}` : ""));
           } else {
+            const summary = result.sectionCounts
+              ? formatSectionSummary(result.sectionCounts)
+              : "items";
             setMessage(
-              `Imported ${result.inserted} new, merged ${result.merged}, ${result.conflicts} conflicts queued.`
+              `Imported ${summary}. ${result.inserted} new, ${result.merged} merged, ${result.conflicts} conflicts queued.`
             );
           }
         });
@@ -36,12 +51,20 @@ export function ResumeUpload() {
         <Upload className="h-5 w-5 text-primary" />
         <div>
           <p className="font-medium">Resume upload</p>
-          <p className="text-sm text-muted-foreground">PDF or DOCX — parsed with GPT-4o when configured</p>
+          <p className="text-sm text-muted-foreground">
+            PDF or DOCX — AI parse plus section-aware fallback for leadership, skills, and courses
+          </p>
         </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="resume">File</Label>
-        <Input id="resume" name="resume" type="file" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" required />
+        <Input
+          id="resume"
+          name="resume"
+          type="file"
+          accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+          required
+        />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? "Parsing…" : "Upload & parse"}

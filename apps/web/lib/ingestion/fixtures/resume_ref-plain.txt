@@ -1,0 +1,43 @@
+Abdoul Ndiongue
+929-645-4561 | andiongu@andrew.cmu.edu | linkedin.com/in/abdoulndiongue | github.com/MaximusAnax
+
+EDUCATION
+Carnegie Mellon University                                          Pittsburgh, PA
+BS in Artificial Intelligence                                       Expected Graduation: May 2028
+Relevant Coursework: Intro to Machine Learning(10301), Generative Artificial Intelligence(10423), Autonomous Agents(15482), Parallel/Sequential Data Structures & Algorithms(15210), Intro to Computer Systems(15213)
+Awards: Ron Brown Rales Scholar, Carnegie Mellon Tartan Scholar
+
+EXPERIENCE
+Student Researcher                                                May 2026 -- Present
+Machine Learning Department – CMU                                 Pittsburgh, PA
+• Architecting a high-efficiency agent loop and harness design for edge-compute VLMs, enabling autonomous computer-use capabilities from pixel-only observations without relying on frontier-scale models.
+• Pioneering an optimized training framework designed to bridge the capability gap between small models and massive cloud architectures, proving that algorithmic efficiency can replicate frontier-scale performance.
+• Unlocking the potential for private, offline, and localized agent autonomy, aiming to democratize AI agent deployment and drastically reduce infrastructure costs for low-resource environments.
+
+Software Engineer Intern                                          May 2025 -- August 2025
+Microsoft – Xbox, PC and Console Engagement Team                  Redmond, WA
+• Engineered a churn-prediction system using Gradient Boosted Decision Trees (XGBoost) to analyze 15M+ user sessions, identifying high-risk churn patterns with a projected retention impact of 1.8M users annually.
+• Developed and integrated a real-time inference engine into the Xbox PC app using React and Python, enabling the dynamic delivery of personalized engagement content based on live user behavior metrics.
+• Optimized model performance by performing extensive feature selection and hyperparameter tuning, achieving an approximate 4.7% improvement in churn reduction metrics through rigorous A/B testing and simulation.
+
+Machine Learning Engineer Intern                                  May 2024 -- August 2024
+Success Academy Charter Schools                                   Manhattan, NY
+• Developed automated feature engineering pipeline in Python to facilitate rapid model training, streamlining the ingestion of raw data into AWS Redshift and reducing data preparation latency by 100+ engineering hours
+• Implemented custom Convex Hull-based heuristic for spatial optimization, utilizing computational geometry to model optimal real estate expansion zones, which enhanced predictive accuracy for location selection by 35%.
+• Built high-performance data preprocessing pipeline on AWS (S3, Redshift) that reduced processing time by 80% through vectorization and parallel processing, enabling faster model training cycles.
+
+TECHNICAL SKILLS
+Machine Learning: Deep Algorithmic Knowledge of Decision Trees, K-Mean, Neural Networks(Convolutional/Recurrent), Deep Learning, Reinforcement Learning.
+Languages, Libraries, & Frameworks: PyTorch, TensorFlow, OpenCV, Hugging Face, LangChain, Sklearn, Python, SQL, C++, NumPy, SciPy.
+Data Infrastructure: AWS(SageMaker,Redshift,S3), PostgreSQL, MongoDB, Docker, CI/CD Pipelines, Vectorization, Parallel Processing.
+
+LEADERSHIP
+Inter fraternity Council                                          November 2025 -- Present
+President                                                         Pittsburgh, PA
+• Executive Governance: Spearheaded the executive board of the Interfraternity Council, governing 8 active chapters and commanding an annual operating budget of $10,000+ to support campus-wide Greek life initiatives.
+• University Liaison: Acted as primary intermediary between the Greek community, CMU administration (including the Dean of Students), and the Pittsburgh municipality to advocate for student housing, safety, and philanthropic initiatives.
+• Crisis Leadership: Formulated and executed an agile crisis-response framework during high-stakes university investigations, protecting organizational longevity while upholding strict community standards.
+
+ColorStack                                                       August 2023 -- Present
+Executive Board                                                   Pittsburgh, PA
+• Community Growth: Co-engineered the strategic growth of the CMU ColorStack chapter, expanding active membership by 70% to foster a robust, supportive ecosystem for Black and Latinx computer science and engineering students.

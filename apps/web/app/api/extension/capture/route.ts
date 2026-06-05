@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { parseJobDescription } from "@hirevault/ai-core";
-import { createClient } from "@supabase/supabase-js";
 import { getUserFromExtensionToken } from "@/lib/extension/auth";
+import { mergeExtensionCaptureFields, type ExtensionJobInput } from "@/lib/extension/merge-capture-fields";
+import { createServiceClient } from "@/lib/supabase/service";
+
+/** Match web smart-capture preview gate in parseAndPreviewJob */
+const AI_PARSE_MIN_CHARS = 60;
 
 export async function POST(request: Request) {
   const auth = await getUserFromExtensionToken(request.headers.get("authorization"));
@@ -10,83 +14,126 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as {
-    job?: {
-      title?: string;
-      company?: string;
-      location?: string;
-      url?: string;
-      description?: string;
-      source?: string;
-    };
+    job?: ExtensionJobInput;
     createApplication?: boolean;
   };
 
   const job = body.job;
-  if (!job?.title) {
+  if (!job?.title?.trim()) {
     return NextResponse.json({ error: "job.title required" }, { status: 400 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = createServiceClient();
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "Server misconfigured: SUPABASE_SERVICE_ROLE_KEY required in root .env" },
+      { status: 500 }
+    );
+  }
 
   const description = job.description ?? "";
   let parsed = null;
-  let tech_stack: string[] = [];
-  let required_qualifications: string[] = [];
-  let preferred_qualifications: string[] = [];
-
-  if (description.length > 50) {
+  if (description.length >= AI_PARSE_MIN_CHARS) {
     const result = await parseJobDescription(description);
-    if (result.data) {
-      parsed = result.data;
-      tech_stack = result.data.tech_stack ?? [];
-      required_qualifications = result.data.required_qualifications ?? [];
-      preferred_qualifications = result.data.preferred_qualifications ?? [];
-    }
+    if (result.data) parsed = result.data;
   }
 
-  const { data: inserted, error } = await supabase
-    .from("jobs")
-    .insert({
-      user_id: auth.userId,
-      title: job.title,
-      company: job.company ?? "Unknown company",
-      location: job.location ?? null,
-      url: job.url ?? null,
-      description_raw: description || null,
-      description_parsed: parsed,
-      tech_stack,
-      required_qualifications,
-      preferred_qualifications,
-      scraped_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
+  const merged = mergeExtensionCaptureFields(job, parsed);
+  const jobUrl = job.url?.trim() || null;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const jobRow = {
+    user_id: auth.userId,
+    title: merged.title,
+    company: merged.company,
+    location: merged.primaryLocation,
+    locations: merged.locations,
+    url: jobUrl,
+    description_raw: description || null,
+    description_parsed: merged.parsed,
+    tech_stack: merged.tech_stack,
+    required_qualifications: merged.required_qualifications,
+    preferred_qualifications: merged.preferred_qualifications,
+    salary_range: merged.salary_range,
+    job_type: merged.job_type,
+    role_season: merged.role_season,
+    role_year: merged.role_year,
+    scraped_at: new Date().toISOString(),
+  };
+
+  let jobId: string;
+  let deduped = false;
+
+  if (jobUrl) {
+    const { data: existing } = await supabase
+      .from("jobs")
+      .select("id")
+      .eq("user_id", auth.userId)
+      .eq("url", jobUrl)
+      .maybeSingle();
+
+    if (existing?.id) {
+      jobId = existing.id;
+      deduped = true;
+      const { error: updateError } = await supabase.from("jobs").update(jobRow).eq("id", jobId);
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+    } else {
+      const { data: inserted, error } = await supabase
+        .from("jobs")
+        .insert(jobRow)
+        .select("id")
+        .single();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!inserted?.id) return NextResponse.json({ error: "Job insert failed" }, { status: 500 });
+      jobId = inserted.id;
+    }
+  } else {
+    const { data: inserted, error } = await supabase
+      .from("jobs")
+      .insert(jobRow)
+      .select("id")
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!inserted?.id) return NextResponse.json({ error: "Job insert failed" }, { status: 500 });
+    jobId = inserted.id;
   }
 
   let applicationId: string | undefined;
   if (body.createApplication !== false) {
-    const { data: app } = await supabase
+    const { data: existingApp } = await supabase
       .from("applications")
-      .insert({
-        user_id: auth.userId,
-        job_id: inserted.id,
-        status: "saved",
-      })
       .select("id")
-      .single();
-    applicationId = app?.id;
+      .eq("user_id", auth.userId)
+      .eq("job_id", jobId)
+      .maybeSingle();
+
+    if (existingApp?.id) {
+      applicationId = existingApp.id;
+    } else {
+      const { data: app, error: appError } = await supabase
+        .from("applications")
+        .insert({
+          user_id: auth.userId,
+          job_id: jobId,
+          status: "saved",
+          priority: 3,
+          notes: [],
+        })
+        .select("id")
+        .single();
+
+      if (appError) {
+        return NextResponse.json({ error: appError.message }, { status: 500 });
+      }
+      applicationId = app?.id;
+    }
   }
 
   return NextResponse.json({
     ok: true,
-    jobId: inserted.id,
+    jobId,
     applicationId,
+    deduped,
   });
 }

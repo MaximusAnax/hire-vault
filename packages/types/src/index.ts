@@ -6,6 +6,21 @@ export type SkillCategory = "language" | "framework" | "tool" | "soft_skill";
 
 export type JobType = "full_time" | "internship" | "contract";
 
+export type RoleSeason = "spring" | "summer" | "fall" | "winter";
+
+export const ROLE_SEASONS: readonly RoleSeason[] = [
+  "spring",
+  "summer",
+  "fall",
+  "winter",
+] as const;
+
+export const JOB_TYPE_LABELS: Record<JobType, string> = {
+  full_time: "Full-time",
+  internship: "Internship",
+  contract: "Contract",
+};
+
 export type ApplicationStatus =
   | "saved"
   | "applied"
@@ -15,29 +30,18 @@ export type ApplicationStatus =
   | "rejected"
   | "withdrawn";
 
-export type InterviewType =
-  | "phone_screen"
-  | "technical"
-  | "behavioral"
-  | "system_design"
-  | "onsite"
-  | "final";
-
-export type InterviewOutcome = "pending" | "passed" | "failed";
-
 export type QuestionCategory =
   | "behavioral"
   | "technical"
   | "situational"
   | "role_specific";
 
-export type MockSessionType = "behavioral" | "technical" | "mixed";
-
 export interface Profile {
   id: string;
   user_id: string;
+  full_name: string | null;
+  email: string | null;
   headline: string | null;
-  summary: string | null;
   location: string | null;
   phone: string | null;
   linkedin_url: string | null;
@@ -45,6 +49,24 @@ export interface Profile {
   portfolio_url: string | null;
   raw_resume_data: Record<string, unknown> | null;
   source: ProfileSource;
+  target_roles: string[];
+  technical_skills_tex: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Leadership {
+  id: string;
+  profile_id: string;
+  organization: string;
+  title: string;
+  location: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_current: boolean;
+  bullet_points: string[];
+  source: ProfileSource;
+  source_hash: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -127,7 +149,10 @@ export interface Job {
   user_id: string;
   title: string;
   company: string;
+  /** Legacy single-string location, kept for backward compatibility. */
   location: string | null;
+  /** Multi-location chip array. Populated by refinement iteration 1; older rows may be empty. */
+  locations: string[];
   url: string | null;
   description_raw: string | null;
   description_parsed: Record<string, unknown> | null;
@@ -136,6 +161,10 @@ export interface Job {
   tech_stack: string[];
   salary_range: string | null;
   job_type: JobType | null;
+  /** Cohort season for intern/new-grad roles (e.g. fall for Fall '26). */
+  role_season: RoleSeason | null;
+  /** Cohort year (e.g. 2026). */
+  role_year: number | null;
   scraped_at: string | null;
   created_at: string;
   updated_at: string;
@@ -160,7 +189,8 @@ export type ProfileSection =
   | "education"
   | "projects"
   | "skills"
-  | "courses";
+  | "courses"
+  | "leadership";
 
 export type IngestionRunStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -282,6 +312,14 @@ export interface Database {
       courses: TableDef<
         Course,
         Omit<Course, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        }
+      >;
+      leadership: TableDef<
+        Leadership,
+        Omit<Leadership, "id" | "created_at" | "updated_at"> & {
           id?: string;
           created_at?: string;
           updated_at?: string;

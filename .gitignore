@@ -32,3 +32,6 @@ next-env.d.ts
 
 # Vercel
 .vercel
+
+# Supabase CLI cache
+supabase/.temp/

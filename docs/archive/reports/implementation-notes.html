@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HireVault — Implementation Notes</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; line-height: 1.6; color: #111; }
+    section { border-left: 3px solid #8b5cf6; padding-left: 1rem; margin-bottom: 2rem; }
+    h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+    .meta { color: #666; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Implementation Notes (running log)</h1>
+  <p>Canonical record for Builder agents. Append sections; do not delete prior entries.</p>
+
+  <section>
+    <h2>2026-05-28 — Iteration 2 bootstrap</h2>
+    <p class="meta">Orchestrated build loop · round2</p>
+    <ul>
+      <li><strong>Decision:</strong> Continue round2; refinement iteration 1 committed as baseline <code>d0f5db3</code>.</li>
+      <li><strong>Harness:</strong> <code>@hirevault/orchestrator</code> with local SDK driver, <code>verdict.json</code> contract, <code>requireHumanApproval: true</code>.</li>
+      <li><strong>DB:</strong> Migrations stay in git; <code>scripts/db.sh</code> allowlists forward-only CLI; preview branch <code>hirevault-loop</code> per plan.</li>
+      <li><strong>M2 save path:</strong> Preview save sets <code>skip_ai_parse=1</code> to avoid a second GPT parse on confirm.</li>
+      <li><strong>M4 PDF:</strong> <code>ResumeRenderer</code> + <code>HtmlChromiumRenderer</code> in web app; <code>LatexRenderer</code> stub in templates package.</li>
+      <li><strong>Open:</strong> Headless PDF in CI requires Chrome; local dev needs <code>PUPPETEER_EXECUTABLE_PATH</code>.</li>
+      <li><strong>Env:</strong> Single root <code>.env</code> for the monorepo (migrated from <code>apps/web/.env.local</code>).</li>
+    </ul>
+  </section>
+</body>
+</html>

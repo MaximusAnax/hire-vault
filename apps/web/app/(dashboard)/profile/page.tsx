@@ -4,16 +4,27 @@ import {
   deleteCourse,
   deleteEducation,
   deleteExperience,
+  deleteLeadership,
   deleteProject,
-  deleteSkill,
 } from "@/lib/profile/actions";
+import { LeadershipRow } from "@/components/profile/leadership-row";
+import { AddLeadershipForm } from "@/components/profile/add-leadership-form";
 import { ProfileHeaderForm } from "@/components/profile/profile-header-form";
-import { SectionList } from "@/components/profile/section-list";
 import { AddExperienceForm } from "@/components/profile/add-experience-form";
 import { AddEducationForm } from "@/components/profile/add-education-form";
 import { AddProjectForm } from "@/components/profile/add-project-form";
-import { AddSkillForm } from "@/components/profile/add-skill-form";
+import { ProfileSkillsTags } from "@/components/profile/profile-skills-tags";
 import { AddCourseForm } from "@/components/profile/add-course-form";
+import { EducationRow } from "@/components/profile/education-row";
+import { ProjectRow } from "@/components/profile/project-row";
+import { CourseRow } from "@/components/profile/course-row";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -22,6 +33,7 @@ import type {
   Course,
   Education,
   Experience,
+  Leadership,
   Project,
   Skill,
 } from "@hirevault/types";
@@ -39,9 +51,10 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const profileId = profile.id;
 
-  const [exp, edu, proj, skills, courses] = await Promise.all([
+  const [exp, edu, lead, proj, skills, courses] = await Promise.all([
     supabase.from("experiences").select("*").eq("profile_id", profileId).order("start_date", { ascending: false }),
     supabase.from("education").select("*").eq("profile_id", profileId),
+    supabase.from("leadership").select("*").eq("profile_id", profileId).order("start_date", { ascending: false }),
     supabase.from("projects").select("*").eq("profile_id", profileId),
     supabase.from("skills").select("*").eq("profile_id", profileId),
     supabase.from("courses").select("*").eq("profile_id", profileId),
@@ -49,6 +62,7 @@ export default async function ProfilePage() {
 
   const experiences = (exp.data ?? []) as Experience[];
   const education = (edu.data ?? []) as Education[];
+  const leadershipList = (lead.data ?? []) as Leadership[];
   const projects = (proj.data ?? []) as Project[];
   const skillsList = (skills.data ?? []) as Skill[];
   const coursesList = (courses.data ?? []) as Course[];
@@ -67,11 +81,12 @@ export default async function ProfilePage() {
         </Button>
       </div>
 
-      <ProfileHeaderForm profile={profile} />
+      <ProfileHeaderForm profile={profile} skills={skillsList} />
 
       <Tabs defaultValue="experiences">
         <TabsList>
           <TabsTrigger value="experiences">Experience</TabsTrigger>
+          <TabsTrigger value="leadership">Leadership</TabsTrigger>
           <TabsTrigger value="education">Education</TabsTrigger>
           <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
@@ -83,65 +98,93 @@ export default async function ProfilePage() {
           <AddExperienceForm />
         </TabsContent>
 
+        <TabsContent value="leadership" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Leadership</CardTitle>
+              <CardDescription>Clubs, teams, and volunteer roles (exported in LaTeX PDF)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {leadershipList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No leadership entries yet.</p>
+              ) : (
+                leadershipList.map((l) => (
+                  <LeadershipRow key={l.id} leadership={l} onDelete={deleteLeadership} />
+                ))
+              )}
+            </CardContent>
+          </Card>
+          <AddLeadershipForm />
+        </TabsContent>
+
         <TabsContent value="education" className="space-y-4">
-          <SectionList
-            title="Education"
-            description="Degrees and institutions"
-            items={education.map((e) => ({
-              id: e.id,
-              title: e.institution,
-              subtitle: [e.degree, e.field_of_study].filter(Boolean).join(" · "),
-            }))}
-            onDelete={deleteEducation}
-            emptyMessage="No education entries yet."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Education</CardTitle>
+              <CardDescription>Degrees and institutions</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {education.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No education entries yet.</p>
+              ) : (
+                education.map((e) => (
+                  <EducationRow key={e.id} education={e} onDelete={deleteEducation} />
+                ))
+              )}
+            </CardContent>
+          </Card>
           <AddEducationForm />
         </TabsContent>
 
         <TabsContent value="projects" className="space-y-4">
-          <SectionList
-            title="Projects"
-            description="Portfolio and side projects"
-            items={projects.map((p) => ({
-              id: p.id,
-              title: p.name,
-              subtitle: p.technologies?.join(", "),
-            }))}
-            onDelete={deleteProject}
-            emptyMessage="No projects yet."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Projects</CardTitle>
+              <CardDescription>Portfolio and side projects</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {projects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No projects yet.</p>
+              ) : (
+                projects.map((p) => (
+                  <ProjectRow key={p.id} project={p} onDelete={deleteProject} />
+                ))
+              )}
+            </CardContent>
+          </Card>
           <AddProjectForm />
         </TabsContent>
 
         <TabsContent value="skills" className="space-y-4">
-          <SectionList
-            title="Skills"
-            description="Languages, frameworks, and tools"
-            items={skillsList.map((s) => ({
-              id: s.id,
-              title: s.name,
-              subtitle: s.category,
-              meta: s.proficiency_level ? `Level ${s.proficiency_level}/5` : undefined,
-            }))}
-            onDelete={deleteSkill}
-            emptyMessage="No skills yet."
-          />
-          <AddSkillForm />
+          <Card>
+            <CardHeader>
+              <CardTitle>Skills</CardTitle>
+              <CardDescription>
+                Tags from resume or LinkedIn import — same list as in Profile details above.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProfileSkillsTags skills={skillsList} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="courses" className="space-y-4">
-          <SectionList
-            title="Courses & certifications"
-            description="Training and credentials"
-            items={coursesList.map((c) => ({
-              id: c.id,
-              title: c.name,
-              subtitle: c.institution,
-              meta: c.completion_date ?? undefined,
-            }))}
-            onDelete={deleteCourse}
-            emptyMessage="No courses yet."
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Courses &amp; certifications</CardTitle>
+              <CardDescription>Training and credentials</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {coursesList.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No courses yet.</p>
+              ) : (
+                coursesList.map((c) => (
+                  <CourseRow key={c.id} course={c} onDelete={deleteCourse} />
+                ))
+              )}
+            </CardContent>
+          </Card>
           <AddCourseForm />
         </TabsContent>
       </Tabs>

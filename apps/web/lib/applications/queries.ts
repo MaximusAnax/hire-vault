@@ -1,12 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
-import type { ApplicationWithJob, ApplicationStatus } from "@hirevault/types";
+import type { ApplicationWithJob, ApplicationStatus, RoleSeason } from "@hirevault/types";
+import { roleTimingSortKey } from "./role-timing";
 
 export interface ApplicationFilters {
   status?: ApplicationStatus | "all";
   company?: string;
+  /** Exact priority match (1–5). */
   priority?: number;
+  /** Minimum stars, e.g. 3 for "3+ stars". */
+  priorityMin?: number;
   jobType?: string;
-  sort?: "updated" | "applied" | "priority" | "company";
+  roleSeason?: RoleSeason | "all";
+  roleYear?: number;
+  location?: string;
+  /** Exclude rejected and withdrawn. */
+  activeOnly?: boolean;
+  /** Any job location chip contains "remote" (case-insensitive). */
+  remoteOnly?: boolean;
+  sort?: "updated" | "applied" | "priority" | "company" | "role_timing";
+}
+
+function jobLocations(app: ApplicationWithJob): string[] {
+  const job = app.job;
+  if (!job) return [];
+  if ((job.locations?.length ?? 0) > 0) return job.locations;
+  if (job.location) return [job.location];
+  return [];
 }
 
 export async function getApplicationsWithJobs(
@@ -38,12 +57,44 @@ export async function getApplicationsWithJobs(
     job: (row as { job: ApplicationWithJob["job"] }).job ?? null,
   })) as ApplicationWithJob[];
 
+  if (filters.priorityMin != null && filters.priorityMin > 0) {
+    results = results.filter((a) => (a.priority ?? 0) >= filters.priorityMin!);
+  }
+
   if (filters.company?.trim()) {
     const q = filters.company.toLowerCase();
     results = results.filter((a) => a.job?.company?.toLowerCase().includes(q));
   }
+
   if (filters.jobType && filters.jobType !== "all") {
     results = results.filter((a) => a.job?.job_type === filters.jobType);
+  }
+
+  if (filters.roleSeason && filters.roleSeason !== "all") {
+    results = results.filter((a) => a.job?.role_season === filters.roleSeason);
+  }
+
+  if (filters.roleYear) {
+    results = results.filter((a) => a.job?.role_year === filters.roleYear);
+  }
+
+  if (filters.location?.trim()) {
+    const q = filters.location.toLowerCase();
+    results = results.filter((a) =>
+      jobLocations(a).some((loc) => loc.toLowerCase().includes(q))
+    );
+  }
+
+  if (filters.remoteOnly) {
+    results = results.filter((a) =>
+      jobLocations(a).some((loc) => loc.toLowerCase().includes("remote"))
+    );
+  }
+
+  if (filters.activeOnly) {
+    results = results.filter(
+      (a) => a.status !== "rejected" && a.status !== "withdrawn"
+    );
   }
 
   const sort = filters.sort ?? "updated";
@@ -56,6 +107,12 @@ export async function getApplicationsWithJobs(
     }
     if (sort === "priority") {
       return (b.priority ?? 0) - (a.priority ?? 0);
+    }
+    if (sort === "role_timing") {
+      const ka = roleTimingSortKey(a.job?.role_season, a.job?.role_year);
+      const kb = roleTimingSortKey(b.job?.role_season, b.job?.role_year);
+      if (ka !== kb) return ka - kb;
+      return (a.job?.company ?? "").localeCompare(b.job?.company ?? "");
     }
     return (b.last_updated ?? "").localeCompare(a.last_updated ?? "");
   });

@@ -1,0 +1,17 @@
+{
+  "runtime": "local",
+  "cwd": ".",
+  "maxIterations": 3,
+  "requireHumanApproval": true,
+  "models": {
+    "builder": "composer-2.5",
+    "tester": "composer-2.5"
+  },
+  "gates": ["typecheck", "lint", "test", "build"],
+  "supabase": {
+    "projectRef": "vnybrxanwlklbtcuizxw",
+    "previewBranch": "hirevault-loop",
+    "migrationsPath": "packages/supabase/migrations"
+  },
+  "milestones": ["m1", "m2", "m3", "m4", "m5"]
+}

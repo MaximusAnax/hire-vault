@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeAtsScore, scoreExperiencesAgainstJd } from "./resume";
+import { computeAtsScore, rewriteBullets, scoreExperiencesAgainstJd } from "./resume";
 
 describe("scoreExperiencesAgainstJd", () => {
   it("scores higher when bullets mention JD keywords", () => {
@@ -25,11 +25,18 @@ describe("scoreExperiencesAgainstJd", () => {
   });
 });
 
+describe("rewriteBullets", () => {
+  it("returns same-length bullets when AI is unavailable (degraded)", async () => {
+    const bullets = ["Built APIs", "Led migrations"];
+    const result = await rewriteBullets(bullets, "SWE at Acme", { target_roles: ["SWE"] });
+    expect(result.bullets.length).toBe(2);
+  });
+});
+
 describe("computeAtsScore", () => {
   it("returns gaps for missing keywords", () => {
     const result = computeAtsScore(
       {
-        summary: "Software engineer",
         experiences: [{ bullet_points: ["Led team"] }],
       },
       ["kubernetes", "python"]

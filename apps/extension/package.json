@@ -6,12 +6,14 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@hirevault/types": "workspace:*",
     "@types/chrome": "^0.0.287",
     "esbuild": "^0.24.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

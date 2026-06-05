@@ -11,6 +11,16 @@ export const parsedExperienceSchema = z.object({
   technologies: z.array(z.string()).optional(),
 });
 
+export const parsedLeadershipSchema = z.object({
+  organization: z.string(),
+  title: z.string(),
+  location: z.string().nullable().optional(),
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
+  is_current: z.boolean().optional(),
+  bullet_points: z.array(z.string()).optional(),
+});
+
 export const parsedEducationSchema = z.object({
   institution: z.string(),
   degree: z.string().nullable().optional(),
@@ -46,6 +56,8 @@ export const parsedCourseSchema = z.object({
 });
 
 export const parsedResumeSchema = z.object({
+  full_name: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
   headline: z.string().nullable().optional(),
   summary: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
@@ -55,6 +67,7 @@ export const parsedResumeSchema = z.object({
   portfolio_url: z.string().nullable().optional(),
   experiences: z.array(parsedExperienceSchema).optional(),
   education: z.array(parsedEducationSchema).optional(),
+  leadership: z.array(parsedLeadershipSchema).optional(),
   projects: z.array(parsedProjectSchema).optional(),
   skills: z.array(parsedSkillSchema).optional(),
   courses: z.array(parsedCourseSchema).optional(),
@@ -83,7 +96,13 @@ export const profileValidationSchema = z.object({
   suggestions: z.array(validationSuggestionSchema),
 });
 
+export type ParsedExperience = z.infer<typeof parsedExperienceSchema>;
+export type ParsedEducation = z.infer<typeof parsedEducationSchema>;
+export type ParsedProject = z.infer<typeof parsedProjectSchema>;
+export type ParsedSkill = z.infer<typeof parsedSkillSchema>;
+export type ParsedCourse = z.infer<typeof parsedCourseSchema>;
 export type ParsedResume = z.infer<typeof parsedResumeSchema>;
+export type ParsedLeadership = z.infer<typeof parsedLeadershipSchema>;
 export type LinkedInImport = z.infer<typeof linkedInImportSchema>;
 export type ProfileValidation = z.infer<typeof profileValidationSchema>;
 export type ValidationSuggestion = z.infer<typeof validationSuggestionSchema>;
@@ -91,12 +110,17 @@ export type ValidationSuggestion = z.infer<typeof validationSuggestionSchema>;
 export const parsedJobDescriptionSchema = z.object({
   title: z.string().optional(),
   company: z.string().optional(),
+  // Legacy single-string location, kept for backward compatibility with older parses.
   location: z.string().nullable().optional(),
+  // Preferred multi-location field — chip array. Empty array when nothing is found.
+  locations: z.array(z.string()).optional(),
   required_qualifications: z.array(z.string()).optional(),
   preferred_qualifications: z.array(z.string()).optional(),
   tech_stack: z.array(z.string()).optional(),
   salary_range: z.string().nullable().optional(),
   job_type: z.enum(["full_time", "internship", "contract"]).nullable().optional(),
+  role_season: z.enum(["spring", "summer", "fall", "winter"]).nullable().optional(),
+  role_year: z.number().int().min(2000).max(2100).nullable().optional(),
 });
 
 export type ParsedJobDescription = z.infer<typeof parsedJobDescriptionSchema>;
@@ -111,7 +135,6 @@ export type QuestionCategory = z.infer<typeof questionCategorySchema>;
 
 export const resumeContentSchema = z.object({
   headline: z.string().optional(),
-  summary: z.string().optional(),
   experiences: z.array(
     z.object({
       id: z.string().optional(),
