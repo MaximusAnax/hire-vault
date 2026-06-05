@@ -1,12 +1,14 @@
 import { ExtensionTokens } from "@/components/settings/extension-tokens";
-import { ClearUserDataCard } from "@/components/settings/clear-user-data-card";
+import { DeveloperToolsCard } from "@/components/settings/developer-tools-card";
 import { listExtensionTokens } from "@/lib/extension/actions";
-import { isDevDataResetAvailable } from "@/lib/dev/actions";
+import { getDevDataSummary, isDevDataResetAvailable } from "@/lib/dev/actions";
+import { EMPTY_DEV_DATA_SUMMARY } from "@/lib/dev/reset-helpers";
 
 export default async function SettingsPage() {
-  const [tokens, devReset] = await Promise.all([
+  const [tokens, devReset, devSummary] = await Promise.all([
     listExtensionTokens(),
     isDevDataResetAvailable(),
+    getDevDataSummary(),
   ]);
 
   return (
@@ -16,11 +18,14 @@ export default async function SettingsPage() {
         <p className="text-muted-foreground text-sm">
           Environment: copy <code className="font-mono text-xs bg-muted px-1 rounded">.env.example</code> to{" "}
           <code className="font-mono text-xs bg-muted px-1 rounded">.env</code> at the repository root. See{" "}
-          <code className="font-mono text-xs bg-muted px-1 rounded">packages/supabase/docs/auth-google-oauth.md</code>.
+          <code className="font-mono text-xs bg-muted px-1 rounded">docs/setup/environment.md</code> and{" "}
+          <code className="font-mono text-xs bg-muted px-1 rounded">docs/setup/auth-google-oauth.md</code>.
         </p>
       </div>
       <ExtensionTokens tokens={tokens} />
-      {devReset ? <ClearUserDataCard /> : null}
+      {devReset ? (
+        <DeveloperToolsCard summary={devSummary ?? EMPTY_DEV_DATA_SUMMARY} />
+      ) : null}
       <div className="text-sm text-muted-foreground space-y-1">
         <p>
           <strong>OPENAI_API_KEY</strong> — JD parsing, resume validation, question generation structure.
