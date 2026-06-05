@@ -1,0 +1,38 @@
+---
+description: Chrome MV3 extension — scrapers, capture flow, shared types
+globs: apps/extension/**
+alwaysApply: false
+---
+
+# Extension patterns
+
+## Flow
+
+Popup → content script scrapes job page → background service worker → `POST /api/extension/capture` with bearer token → creates/updates `jobs` + `applications`.
+
+## Key files
+
+| File | Role |
+|------|------|
+| `src/content/job-detector.ts` | Page detection, trigger scrape |
+| `src/content/scrapers.ts` | DOM scrapers per board |
+| `src/content/scrapers-logic.ts` | Pure parse/normalize logic (unit-tested) |
+| `src/background/service-worker.ts` | API calls, token storage |
+| `popup/popup.ts` | User actions, status |
+| `src/shared/types.ts` | Payload shapes aligned with web API |
+
+## Conventions
+
+- Keep **pure extraction logic** in `scrapers-logic.ts` with Vitest tests (`scrapers-logic.test.ts`)
+- `scrapers.ts` is DOM-only; delegate normalization to logic module
+- Types must stay in sync with `apps/web/app/api/extension/capture/route.ts` and `lib/extension/merge-capture-fields.ts`
+- Scrapers break on DOM changes — prefer structured selectors; page-dump fallback exists for manual recovery
+
+## Dev
+
+```bash
+cd apps/extension && pnpm build   # or package.json scripts
+pnpm test                         # vitest in extension package
+```
+
+Auth tokens are managed in web Settings (`components/settings/extension-tokens.tsx`).

@@ -1,0 +1,46 @@
+---
+description: Next.js web app patterns — App Router, lib layout, server actions
+globs: apps/web/**
+alwaysApply: false
+---
+
+# apps/web patterns
+
+## Layout
+
+- Routes: `app/(dashboard)/{overview,profile,applications,resumes,interviews,settings}/page.tsx`
+- UI: `components/{domain}/` · Primitives: `components/ui/` (shadcn)
+- Domain logic: `lib/{domain}/queries.ts` (read) + `actions.ts` (mutate)
+
+## Data flow
+
+- **Server Components** in `page.tsx` fetch via `queries.ts`
+- **Client components** call server actions from `actions.ts`; use `revalidatePath` in actions after mutations
+- Supabase server client: `lib/supabase/server.ts` · Service role (extension API only): `lib/supabase/service.ts`
+
+## Server actions (`"use server"`)
+
+- One `"use server"` file per domain at `lib/{domain}/actions.ts`
+- Profile is split: implementations in `lib/profile/actions/*`, **async wrappers only** in `lib/profile/actions.ts` (Next.js cannot re-export from `"use server"` barrels)
+- Do not export types from `"use server"` files — put shared types in `lib/{domain}/types.ts` or `@hirevault/types`
+
+## Key URLs
+
+| Surface | Route / param |
+|---------|----------------|
+| Applications board | `/applications` or `?view=board` (default) |
+| Applications list | `?view=list` |
+| Resumes index | `/resumes` (no `application` param) |
+| Resume builder | `/resumes?application=<id>&version=<n>` |
+| Interview prep | `/interviews?job=<id>` |
+
+Use `resumeBuilderUrl(applicationId)` — do not hand-build resume query strings.
+
+## Common pitfalls (see docs/OPERATIONS.md)
+
+- Empty states must still show entry points (add application, pick application, etc.)
+- Child lists must filter by parent scope (`jobId`, `applicationId`) — no cross-scope leakage
+
+## Extension API
+
+`app/api/extension/capture/route.ts` — bearer auth via `lib/extension/auth.ts`, field merge via `lib/extension/merge-capture-fields.ts`

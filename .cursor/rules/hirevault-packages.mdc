@@ -1,0 +1,32 @@
+---
+description: Shared packages — ai-core, types, resume-templates
+globs: packages/**
+alwaysApply: false
+---
+
+# Shared packages
+
+| Package | Import | Purpose |
+|---------|--------|---------|
+| `@hirevault/types` | `packages/types` | DB + API TypeScript types |
+| `@hirevault/ai-core` | `packages/ai-core` | Zod schemas, JD parse, bullet rewrite, ATS heuristic, interview gen |
+| `@hirevault/resume-templates` | `packages/resume-templates` | LaTeX build + `pdflatex` PDF render |
+| `@hirevault/orchestrator` | `packages/orchestrator` | Archived agent build loop — not product runtime |
+
+## ai-core modules
+
+- `schemas.ts` — `ResumeContent`, parsed JD types (export types from here, not from `"use server"` files)
+- `parse.ts` — OpenAI JD parsing
+- `write.ts` — Anthropic bullet rewrites
+- `resume.ts` — experience scoring, keyword match
+- `interviews.ts` — question generation
+
+Web app calls these from `lib/resumes/actions.ts`, `lib/interviews/actions.ts`, `lib/ingestion/`.
+
+## Resume PDF
+
+LaTeX only (`packages/resume-templates`). Requires `pdflatex` on host (`LATEX_COMPILER` env optional). No HTML/Chromium PDF path.
+
+## Tests
+
+Package-level unit tests live beside source (`*.test.ts`). Run via root `pnpm test` (turbo).
