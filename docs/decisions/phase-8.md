@@ -1,5 +1,7 @@
 # Phase 8 — Coaching & Insights
 
+> **Historical — superseded.** The deterministic insights engine and coaching hub were removed in the lean recruitment pass. Overview now shows pipeline analytics only. See [PRODUCT.md](../PRODUCT.md).
+
 ## Decisions
 
 1. **Deterministic insights engine** — Profile strength and strategy rules in `ai-core/insights.ts` for predictable overview cards without extra API calls.

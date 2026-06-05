@@ -107,10 +107,19 @@ export async function polishParsedResumeBullets(
       return { ...proj, bullet_points: result.bullets };
     })
   );
+  const leadership = await Promise.all(
+    (resume.leadership ?? []).map(async (lead) => {
+      const bullets = lead.bullet_points ?? [];
+      if (bullets.length === 0) return lead;
+      const result = await polishBullets(bullets, lead.title);
+      return { ...lead, bullet_points: result.bullets };
+    })
+  );
   return {
     ...resume,
     experiences: resume.experiences ? experiences : resume.experiences,
     projects: resume.projects ? projects : resume.projects,
+    leadership: resume.leadership ? leadership : resume.leadership,
   };
 }
 

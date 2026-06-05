@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getApplicationsWithJobs } from "@/lib/applications/queries";
+import type { ResumeSummary } from "@/lib/resumes/resume-summary";
 
 export async function getApplicationsForResumeWorkspace() {
   return getApplicationsWithJobs({ sort: "updated" });
@@ -17,22 +18,28 @@ export async function getTailoredResumes() {
   return data ?? [];
 }
 
-export async function getTailoredResume(id: string) {
+export async function getResumeSummariesByApplication(): Promise<Record<string, ResumeSummary>> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tailored_resumes")
-    .select("*")
-    .eq("id", id)
-    .single();
-  return data;
-}
+    .select("application_id, version, ats_score, generated_at, pdf_storage_path")
+    .order("generated_at", { ascending: false });
+  if (error || !data) return {};
 
-export async function getJobsForTailoring() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("jobs")
-    .select("id, title, company, description_raw, tech_stack, required_qualifications")
-    .order("created_at", { ascending: false })
-    .limit(50);
-  return data ?? [];
+  const map: Record<string, ResumeSummary> = {};
+  for (const row of data) {
+    const appId = row.application_id as string;
+    if (!map[appId]) {
+      map[appId] = {
+        count: 1,
+        latestVersion: row.version,
+        latestAts: row.ats_score,
+        latestGeneratedAt: row.generated_at,
+        hasPdf: Boolean(row.pdf_storage_path),
+      };
+    } else {
+      map[appId].count += 1;
+    }
+  }
+  return map;
 }

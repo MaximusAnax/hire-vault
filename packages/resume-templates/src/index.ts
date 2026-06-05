@@ -3,6 +3,8 @@ export {
   compileLatexToPdf,
   renderResumePdf,
   escapeLatex,
+  skillsToTechnicalSkillsTex,
+  type SkillCategoryForLatex,
   type LatexResumeInput,
   type LatexProfileHeader,
   type LatexEducationRow,

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Experience } from "@hirevault/types";
-import type { DeleteAction } from "@/lib/profile/actions";
+import type { DeleteAction } from "@/lib/profile/types";
 import { ExperienceRow } from "./experience-row";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 

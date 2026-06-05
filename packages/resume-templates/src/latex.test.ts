@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { buildResumeDocument, escapeLatex } from "./latex";
+import { buildResumeDocument, escapeLatex, skillsToTechnicalSkillsTex } from "./latex";
 
 describe("escapeLatex", () => {
   it("escapes special characters", () => {
     expect(escapeLatex("C++ & AWS")).toBe("C++ \\& AWS");
+  });
+});
+
+describe("skillsToTechnicalSkillsTex", () => {
+  it("groups skills by category for LaTeX export", () => {
+    const tex = skillsToTechnicalSkillsTex([
+      { name: "Python", category: "language" },
+      { name: "PyTorch", category: "framework" },
+    ]);
+    expect(tex).toContain("\\textbf{Languages}{: Python.}");
+    expect(tex).toContain("PyTorch");
   });
 });
 

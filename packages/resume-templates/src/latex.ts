@@ -159,6 +159,50 @@ function buildExperiences(
   return `%-----------EXPERIENCE-----------\n\\section{Experience}\n  \\resumeSubHeadingListStart\n${blocks.join("\n\n")}\n  \\resumeSubHeadingListEnd\n\n`;
 }
 
+export type SkillCategoryForLatex = "language" | "framework" | "tool" | "soft_skill";
+
+const SKILL_CATEGORY_LABELS: Record<SkillCategoryForLatex, string> = {
+  language: "Languages",
+  framework: "Libraries \\& Frameworks",
+  tool: "Tools",
+  soft_skill: "Other",
+};
+
+const SKILL_CATEGORY_ORDER: SkillCategoryForLatex[] = [
+  "language",
+  "framework",
+  "tool",
+  "soft_skill",
+];
+
+/** Build resume Technical Skills LaTeX body from structured profile skills (resume export only). */
+export function skillsToTechnicalSkillsTex(
+  skills: { name: string; category: SkillCategoryForLatex }[]
+): string {
+  if (!skills.length) return "";
+
+  const byCategory = new Map<SkillCategoryForLatex, string[]>();
+  for (const skill of skills) {
+    const name = skill.name.trim();
+    if (!name) continue;
+    const list = byCategory.get(skill.category) ?? [];
+    if (!list.some((n) => n.toLowerCase() === name.toLowerCase())) {
+      list.push(name);
+      byCategory.set(skill.category, list);
+    }
+  }
+
+  const lines: string[] = [];
+  for (const category of SKILL_CATEGORY_ORDER) {
+    const names = byCategory.get(category);
+    if (!names?.length) continue;
+    const label = SKILL_CATEGORY_LABELS[category];
+    const body = names.map((n) => escapeLatex(n)).join(", ");
+    lines.push(`     \\textbf{${label}}{: ${body}.}\\`);
+  }
+  return lines.join("\n");
+}
+
 function buildTechnicalSkills(tex: string): string {
   const body = tex.trim();
   if (!body) return "";

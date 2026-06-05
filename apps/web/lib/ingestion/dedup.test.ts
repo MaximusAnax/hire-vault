@@ -25,4 +25,16 @@ describe("dedup", () => {
     const outcome = resolveDedup("skills", incoming, [{ id: "sk-1", source_hash: hash }]);
     expect(outcome.action).toBe("merge");
   });
+
+  it("hashes leadership by organization and title", () => {
+    const incoming = {
+      organization: "ColorStack",
+      title: "Executive Board",
+      start_date: "2023-08-01",
+    };
+    const hash = computeSourceHash("leadership", incoming);
+    expect(hash).toHaveLength(64);
+    const outcome = resolveDedup("leadership", incoming, [{ id: "l-1", source_hash: hash }]);
+    expect(outcome.action).toBe("conflict");
+  });
 });

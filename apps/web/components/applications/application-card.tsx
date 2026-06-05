@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { ChevronDown, GripVertical, Trash2 } from "lucide-react";
 import type { ApplicationWithJob, JobType, RoleSeason } from "@hirevault/types";
 import { ROLE_SEASONS } from "@hirevault/types";
@@ -23,6 +24,10 @@ import {
   ROLE_SEASON_LABELS,
   resolveRoleTiming,
 } from "@/lib/applications/role-timing";
+import type { ResumeSummary } from "@/lib/resumes/resume-summary";
+import { resumeCtaLabel } from "@/lib/resumes/resume-summary";
+import { resumeBuilderUrl } from "@/lib/resumes/urls";
+import { ResumeSummaryBadge } from "@/components/resumes/resume-summary-badge";
 import { cn } from "@/lib/utils";
 
 const SAVE_DEBOUNCE_MS = 450;
@@ -80,9 +85,11 @@ function draftToPayload(draft: JobDraft) {
 export function ApplicationCard({
   application,
   onDragStart,
+  resumeSummary,
 }: {
   application: ApplicationWithJob;
   onDragStart?: () => void;
+  resumeSummary?: ResumeSummary;
 }) {
   const [pending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
@@ -427,6 +434,18 @@ export function ApplicationCard({
             </option>
           ))}
         </select>
+
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+            <Link href={resumeBuilderUrl(application.id)}>{resumeCtaLabel(resumeSummary)}</Link>
+          </Button>
+          {application.job_id ? (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" asChild>
+              <Link href={`/interviews?job=${application.job_id}`}>Interview</Link>
+            </Button>
+          ) : null}
+          <ResumeSummaryBadge summary={resumeSummary} />
+        </div>
 
         <form
           className="flex gap-1 mt-2"

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import type { Project } from "@hirevault/types";
-import type { DeleteAction } from "@/lib/profile/actions";
+import type { DeleteAction } from "@/lib/profile/types";
 import { updateProject } from "@/lib/profile/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -11,6 +11,16 @@ export const parsedExperienceSchema = z.object({
   technologies: z.array(z.string()).optional(),
 });
 
+export const parsedLeadershipSchema = z.object({
+  organization: z.string(),
+  title: z.string(),
+  location: z.string().nullable().optional(),
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
+  is_current: z.boolean().optional(),
+  bullet_points: z.array(z.string()).optional(),
+});
+
 export const parsedEducationSchema = z.object({
   institution: z.string(),
   degree: z.string().nullable().optional(),
@@ -46,6 +56,8 @@ export const parsedCourseSchema = z.object({
 });
 
 export const parsedResumeSchema = z.object({
+  full_name: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
   headline: z.string().nullable().optional(),
   summary: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
@@ -55,6 +67,7 @@ export const parsedResumeSchema = z.object({
   portfolio_url: z.string().nullable().optional(),
   experiences: z.array(parsedExperienceSchema).optional(),
   education: z.array(parsedEducationSchema).optional(),
+  leadership: z.array(parsedLeadershipSchema).optional(),
   projects: z.array(parsedProjectSchema).optional(),
   skills: z.array(parsedSkillSchema).optional(),
   courses: z.array(parsedCourseSchema).optional(),
@@ -83,7 +96,13 @@ export const profileValidationSchema = z.object({
   suggestions: z.array(validationSuggestionSchema),
 });
 
+export type ParsedExperience = z.infer<typeof parsedExperienceSchema>;
+export type ParsedEducation = z.infer<typeof parsedEducationSchema>;
+export type ParsedProject = z.infer<typeof parsedProjectSchema>;
+export type ParsedSkill = z.infer<typeof parsedSkillSchema>;
+export type ParsedCourse = z.infer<typeof parsedCourseSchema>;
 export type ParsedResume = z.infer<typeof parsedResumeSchema>;
+export type ParsedLeadership = z.infer<typeof parsedLeadershipSchema>;
 export type LinkedInImport = z.infer<typeof linkedInImportSchema>;
 export type ProfileValidation = z.infer<typeof profileValidationSchema>;
 export type ValidationSuggestion = z.infer<typeof validationSuggestionSchema>;

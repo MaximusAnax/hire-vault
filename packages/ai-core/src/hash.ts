@@ -20,6 +20,19 @@ export function hashExperience(input: {
   return sha256(payload);
 }
 
+export function hashLeadership(input: {
+  organization: string;
+  title: string;
+  start_date?: string | null;
+}): string {
+  const payload = [
+    normalize(input.organization),
+    normalize(input.title),
+    input.start_date ?? "",
+  ].join("|");
+  return sha256(payload);
+}
+
 export function hashEducation(input: {
   institution: string;
   degree?: string | null;

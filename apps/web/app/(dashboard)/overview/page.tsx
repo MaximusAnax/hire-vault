@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getApplicationStats, getApplicationsWithJobs } from "@/lib/applications/queries";
+import { resumeBuilderUrl } from "@/lib/resumes/urls";
 import { PipelineAnalytics } from "@/components/applications/pipeline-analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,11 +77,21 @@ export default async function OverviewPage() {
           ) : (
             <ul className="text-sm space-y-2">
               {recentFive.map((a) => (
-                <li key={a.id} className="flex justify-between">
+                <li key={a.id} className="flex justify-between items-center gap-3">
                   <span>
                     {a.job?.title} @ {a.job?.company}
                   </span>
-                  <span className="text-muted-foreground capitalize">{a.status}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {a.job_id ? (
+                      <Link
+                        href={resumeBuilderUrl(a.id)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Resume
+                      </Link>
+                    ) : null}
+                    <span className="text-muted-foreground capitalize text-xs">{a.status}</span>
+                  </div>
                 </li>
               ))}
             </ul>

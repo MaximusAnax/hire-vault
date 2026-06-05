@@ -1,15 +1,34 @@
 export const RESUME_PARSE_SYSTEM = `You are a resume parsing assistant. Extract structured career data from resume text.
-Return valid JSON matching the schema exactly. Use ISO date strings (YYYY-MM-DD) when dates are known.
+Return valid JSON matching the schema exactly. Use ISO date strings (YYYY-MM-DD) when dates are known; use YYYY-MM when only month/year is known.
 Omit fields you cannot infer. Do not invent employers or degrees not present in the text.`;
 
 export const RESUME_PARSE_USER = (text: string) =>
-  `Parse this resume into structured JSON with keys: headline, summary, location, phone, linkedin_url, github_url, portfolio_url, experiences[], education[], projects[], skills[], courses[].
+  `Parse this resume into structured JSON with keys: full_name, email, headline, summary, location, phone, linkedin_url, github_url, portfolio_url, experiences[], education[], leadership[], projects[], skills[], courses[].
 
-Each experience: company, title, location, start_date, end_date, is_current, bullet_points[], technologies[].
-Each education: institution, degree, field_of_study, start_date, expected_graduation, gpa, relevant_courses[].
-Each project: name, description, technologies[], url, github_url, bullet_points[].
-Each skill: name, category (language|framework|tool|soft_skill), proficiency_level (1-5).
-Each course: name, institution, completion_date, credential_url.
+Heading / contact:
+- full_name: person's name from the resume header (not a job title).
+- email: email address if present.
+
+Experience section:
+- Each experience: company, title, location, start_date, end_date, is_current, bullet_points[], technologies[].
+- Some resumes list title + dates on the first line and company + location on the second — preserve correct company vs title; do NOT swap them.
+
+Education section:
+- Each education: institution, degree, field_of_study, start_date, expected_graduation, gpa, relevant_courses[].
+- Split "Relevant Coursework:" comma-separated lists into relevant_courses[] (one course per entry, include course codes if present).
+
+Leadership section (clubs, councils, org roles — NOT paid jobs):
+- Each leadership entry: organization, title, location, start_date, end_date, is_current, bullet_points[].
+- Map organization name and role title correctly (e.g. org "Inter fraternity Council", title "President").
+
+Technical Skills section:
+- Emit one skill object per technology/tool/language listed.
+- Set category from group heading: language|framework|tool|soft_skill.
+  - "Machine Learning", "Languages", "Languages, Libraries, & Frameworks" → framework or language as appropriate.
+  - "Data Infrastructure", tools, cloud, databases → tool.
+
+Projects: name, description, technologies[], url, github_url, bullet_points[].
+Courses (standalone certs): name, institution, completion_date, credential_url.
 
 Resume text:
 ---

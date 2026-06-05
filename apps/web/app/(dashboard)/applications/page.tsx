@@ -1,10 +1,12 @@
 import { Suspense } from "react";
-import { getApplicationsWithJobs } from "@/lib/applications/queries";
+import { getApplicationsWithJobs, getApplicationStats } from "@/lib/applications/queries";
+import { getResumeSummariesByApplication } from "@/lib/resumes/queries";
 import { KanbanBoard } from "@/components/applications/kanban-board";
+import { ApplicationListView } from "@/components/applications/application-list-view";
 import { ApplicationFilters } from "@/components/applications/application-filters";
+import { ApplicationViewToggle } from "@/components/applications/application-view-toggle";
 import { AddApplicationForm } from "@/components/applications/add-application-form";
 import { PipelineAnalytics } from "@/components/applications/pipeline-analytics";
-import { getApplicationStats } from "@/lib/applications/queries";
 import type { ApplicationStatus, RoleSeason } from "@hirevault/types";
 
 export default async function ApplicationsPage({
@@ -33,9 +35,12 @@ export default async function ApplicationsPage({
         | "role_timing") ?? "updated",
   };
 
-  const [applications, stats] = await Promise.all([
+  const view = params.view === "list" ? "list" : "board";
+
+  const [applications, stats, resumeSummaries] = await Promise.all([
     getApplicationsWithJobs(filters),
     getApplicationStats(),
+    getResumeSummariesByApplication(),
   ]);
 
   return (
@@ -43,7 +48,7 @@ export default async function ApplicationsPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Applications</h1>
         <p className="text-muted-foreground">
-          Kanban pipeline — click a card to edit, filter by cohort or priority, drag by the handle.
+          Board or list — open a role&apos;s resume from any card or row.
         </p>
       </div>
 
@@ -54,11 +59,23 @@ export default async function ApplicationsPage({
         velocity30d={stats.velocity30d}
       />
 
-      <Suspense fallback={null}>
-        <ApplicationFilters />
-      </Suspense>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <Suspense fallback={null}>
+          <ApplicationFilters />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ApplicationViewToggle />
+        </Suspense>
+      </div>
 
-      <KanbanBoard applications={applications} />
+      {view === "list" ? (
+        <ApplicationListView
+          applications={applications}
+          resumeSummaries={resumeSummaries}
+        />
+      ) : (
+        <KanbanBoard applications={applications} resumeSummaries={resumeSummaries} />
+      )}
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Add application</h2>

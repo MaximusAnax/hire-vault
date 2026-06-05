@@ -2,6 +2,8 @@
 
 Manifest V3 extension for one-click job capture into Applications.
 
+**Product context:** [docs/PRODUCT.md](../../docs/PRODUCT.md) · **Code map:** [docs/NAVIGATION.md](../../docs/NAVIGATION.md#extension-capture)
+
 ## Build
 
 ```bash

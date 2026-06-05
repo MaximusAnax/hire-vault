@@ -8,14 +8,14 @@ import {
   scoreExperiencesAgainstJd,
   type ResumeContent,
 } from "@hirevault/ai-core";
-import { renderResumePdf } from "@hirevault/resume-templates";
+import { renderResumePdf, skillsToTechnicalSkillsTex } from "@hirevault/resume-templates";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileForUser } from "@/lib/profile/get-profile";
-import type { Education, Experience, Leadership } from "@hirevault/types";
+import type { Education, Experience, Leadership, Skill } from "@hirevault/types";
 
 async function loadProfileBundle(profileId: string) {
   const supabase = await createClient();
-  const [exps, edus, leadership, profileRow] = await Promise.all([
+  const [exps, edus, leadership, skills, profileRow] = await Promise.all([
     supabase
       .from("experiences")
       .select("*")
@@ -27,6 +27,7 @@ async function loadProfileBundle(profileId: string) {
       .select("*")
       .eq("profile_id", profileId)
       .order("start_date", { ascending: false }),
+    supabase.from("skills").select("*").eq("profile_id", profileId),
     supabase.from("profiles").select("*").eq("id", profileId).single(),
   ]);
   return {
@@ -34,6 +35,7 @@ async function loadProfileBundle(profileId: string) {
     experiences: (exps.data ?? []) as Experience[],
     education: (edus.data ?? []) as Education[],
     leadership: (leadership.data ?? []) as Leadership[],
+    skills: (skills.data ?? []) as Skill[],
   };
 }
 
@@ -169,8 +171,11 @@ export async function exportResumePdf(resumeId: string) {
   if (!tailored?.content) return { error: "Resume not found" };
 
   const skillsTex =
+    skillsToTechnicalSkillsTex(
+      bundle.skills.map((s) => ({ name: s.name, category: s.category }))
+    ) ||
     profile.technical_skills_tex?.trim() ||
-    String.raw`     \textbf{Languages}{: Add your skills in Profile → Technical skills (LaTeX).}`;
+    String.raw`     \textbf{Languages}{: Add skills in Profile (import resume or add tags).}`;
 
   let pdf: Buffer;
   try {

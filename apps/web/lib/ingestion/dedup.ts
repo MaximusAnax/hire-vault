@@ -1,11 +1,12 @@
+import type { ProfileSection } from "@hirevault/types";
 import {
   hashCourse,
   hashEducation,
   hashExperience,
+  hashLeadership,
   hashProject,
   hashSkill,
 } from "@hirevault/ai-core";
-import type { ProfileSection } from "@hirevault/types";
 
 export function computeSourceHash(
   section: ProfileSection,
@@ -15,6 +16,12 @@ export function computeSourceHash(
     case "experiences":
       return hashExperience({
         company: String(data.company ?? ""),
+        title: String(data.title ?? ""),
+        start_date: (data.start_date as string) ?? null,
+      });
+    case "leadership":
+      return hashLeadership({
+        organization: String(data.organization ?? ""),
         title: String(data.title ?? ""),
         start_date: (data.start_date as string) ?? null,
       });
@@ -73,6 +80,8 @@ export function mergeRecords(
   return merged;
 }
 
+const BULLET_SECTIONS: ProfileSection[] = ["experiences", "leadership"];
+
 export function resolveDedup(
   section: ProfileSection,
   incoming: Record<string, unknown>,
@@ -86,7 +95,7 @@ export function resolveDedup(
   }
 
   const conflictOnBullets = options?.conflictOnBulletDiff ?? true;
-  if (conflictOnBullets && section === "experiences") {
+  if (conflictOnBullets && BULLET_SECTIONS.includes(section)) {
     return {
       action: "conflict",
       existingId: match.id,

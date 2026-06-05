@@ -9,7 +9,8 @@ function text(el: Element | null): string {
 }
 
 function innerText(el: Element | null): string {
-  return el?.innerText?.trim() ?? el?.textContent?.trim() ?? "";
+  const node = el as HTMLElement | null;
+  return node?.innerText?.trim() ?? el?.textContent?.trim() ?? "";
 }
 
 function meta(prop: string): string {

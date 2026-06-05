@@ -6,7 +6,6 @@ import {
   deleteExperience,
   deleteLeadership,
   deleteProject,
-  deleteSkill,
 } from "@/lib/profile/actions";
 import { LeadershipRow } from "@/components/profile/leadership-row";
 import { AddLeadershipForm } from "@/components/profile/add-leadership-form";
@@ -14,11 +13,10 @@ import { ProfileHeaderForm } from "@/components/profile/profile-header-form";
 import { AddExperienceForm } from "@/components/profile/add-experience-form";
 import { AddEducationForm } from "@/components/profile/add-education-form";
 import { AddProjectForm } from "@/components/profile/add-project-form";
-import { AddSkillForm } from "@/components/profile/add-skill-form";
+import { ProfileSkillsTags } from "@/components/profile/profile-skills-tags";
 import { AddCourseForm } from "@/components/profile/add-course-form";
 import { EducationRow } from "@/components/profile/education-row";
 import { ProjectRow } from "@/components/profile/project-row";
-import { SkillRow } from "@/components/profile/skill-row";
 import { CourseRow } from "@/components/profile/course-row";
 import {
   Card,
@@ -83,7 +81,7 @@ export default async function ProfilePage() {
         </Button>
       </div>
 
-      <ProfileHeaderForm profile={profile} />
+      <ProfileHeaderForm profile={profile} skills={skillsList} />
 
       <Tabs defaultValue="experiences">
         <TabsList>
@@ -161,19 +159,14 @@ export default async function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle>Skills</CardTitle>
-              <CardDescription>Languages, frameworks, and tools</CardDescription>
+              <CardDescription>
+                Tags from resume or LinkedIn import — same list as in Profile details above.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {skillsList.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No skills yet.</p>
-              ) : (
-                skillsList.map((s) => (
-                  <SkillRow key={s.id} skill={s} onDelete={deleteSkill} />
-                ))
-              )}
+            <CardContent>
+              <ProfileSkillsTags skills={skillsList} />
             </CardContent>
           </Card>
-          <AddSkillForm />
         </TabsContent>
 
         <TabsContent value="courses" className="space-y-4">

@@ -30,23 +30,11 @@ export type ApplicationStatus =
   | "rejected"
   | "withdrawn";
 
-export type InterviewType =
-  | "phone_screen"
-  | "technical"
-  | "behavioral"
-  | "system_design"
-  | "onsite"
-  | "final";
-
-export type InterviewOutcome = "pending" | "passed" | "failed";
-
 export type QuestionCategory =
   | "behavioral"
   | "technical"
   | "situational"
   | "role_specific";
-
-export type MockSessionType = "behavioral" | "technical" | "mixed";
 
 export interface Profile {
   id: string;

@@ -1,6 +1,7 @@
 import { ResumeWorkspace } from "@/components/resumes/resume-workspace";
 import {
   getApplicationsForResumeWorkspace,
+  getResumeSummariesByApplication,
   getTailoredResumes,
 } from "@/lib/resumes/queries";
 import type { ResumeContent } from "@hirevault/ai-core";
@@ -11,9 +12,10 @@ export default async function ResumesPage({
   searchParams: Promise<{ application?: string; version?: string }>;
 }) {
   const params = await searchParams;
-  const [applications, resumes] = await Promise.all([
+  const [applications, resumes, resumeSummaries] = await Promise.all([
     getApplicationsForResumeWorkspace(),
     getTailoredResumes(),
+    getResumeSummariesByApplication(),
   ]);
 
   return (
@@ -21,10 +23,11 @@ export default async function ResumesPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Resumes</h1>
         <p className="text-muted-foreground">
-          Tailor bullets for a tracked role and export a PDF.
+          Pick a tracked role, tailor bullets, and export a PDF.
         </p>
       </div>
       <ResumeWorkspace
+        resumeSummaries={resumeSummaries}
         applications={applications
           .filter((a): a is (typeof applications)[number] & { job_id: string } =>
             Boolean(a.job_id)

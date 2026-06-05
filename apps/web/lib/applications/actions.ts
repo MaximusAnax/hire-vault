@@ -1,17 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { parseJobDescription, type ParsedJobDescription } from "@hirevault/ai-core";
+import { parseJobDescription } from "@hirevault/ai-core";
 import { createClient } from "@/lib/supabase/server";
 import type { ApplicationStatus, JobType } from "@hirevault/types";
-import { fetchJobFromUrl, isLikelyUrl } from "./scrape";
+import {
+  runParseAndPreviewJob,
+  type ParseAndPreviewJobBlocked,
+  type ParseAndPreviewJobError,
+  type ParseAndPreviewJobResult,
+} from "./preview";
 import { normalizeLocations } from "./locations";
 import { resolveRoleTiming } from "./role-timing";
 
 function revalidateApps() {
   revalidatePath("/applications");
-  revalidatePath("/jobs");
   revalidatePath("/overview");
+  revalidatePath("/resumes");
+  revalidatePath("/interviews");
 }
 
 export async function createJob(formData: FormData) {
@@ -113,108 +119,15 @@ export async function createJob(formData: FormData) {
   return { success: true, jobId: job?.id };
 }
 
-export interface ParseAndPreviewJobResult {
-  /** Free-text JD or scraped page text — surfaced so the form can post it back on save. */
-  description_raw: string;
-  /** Source the text was obtained from. */
-  source: "url" | "text";
-  /** Original URL if input was a link. */
-  url?: string;
-  /** Per-domain handler that succeeded, if any. */
-  scrapeSource?: "greenhouse" | "lever" | "ashby" | "workday" | "generic";
-  /** AI-parsed structured fields (empty object if AI is unavailable). */
-  parsed: ParsedJobDescription;
-  /** Normalized location chips merged from scrape + AI. */
-  locations: string[];
-  /** True when AI is unavailable / returned no data; the user can still edit and save. */
-  degraded?: boolean;
-  /** AI parse error, if any. */
-  warning?: string;
-}
+export type {
+  ParseAndPreviewJobResult,
+  ParseAndPreviewJobBlocked,
+  ParseAndPreviewJobError,
+};
 
-export interface ParseAndPreviewJobBlocked {
-  blocked: true;
-  url: string;
-  fallbackHint: string;
-  status?: number;
-}
-
-export interface ParseAndPreviewJobError {
-  error: string;
-}
-
-/**
- * Smart-capture entry point. Accepts either a URL or pasted JD text, runs the scraper
- * when needed, then pipes the result through {@link parseJobDescription}. Always
- * returns a structured preview that the client can edit and POST back via {@link createJob}.
- */
-export async function parseAndPreviewJob(
-  input: string
-): Promise<ParseAndPreviewJobResult | ParseAndPreviewJobBlocked | ParseAndPreviewJobError> {
-  const trimmed = (input ?? "").trim();
-  if (!trimmed) return { error: "Paste a job URL or job description first." };
-
-  let descriptionText = "";
-  let source: "url" | "text" = "text";
-  let url: string | undefined;
-  let scrapeSource: ParseAndPreviewJobResult["scrapeSource"];
-  let scrapedTitle: string | null = null;
-  let scrapedCompany: string | null = null;
-  let scrapedLocation: string | null = null;
-
-  if (isLikelyUrl(trimmed)) {
-    source = "url";
-    url = trimmed;
-    const scraped = await fetchJobFromUrl(trimmed);
-    if ("blocked" in scraped && scraped.blocked) {
-      return {
-        blocked: true,
-        url: scraped.url,
-        fallbackHint: scraped.fallbackHint,
-        status: scraped.status,
-      };
-    }
-    descriptionText = scraped.text;
-    scrapeSource = scraped.source;
-    scrapedTitle = scraped.title;
-    scrapedCompany = scraped.company;
-    scrapedLocation = scraped.location;
-  } else {
-    descriptionText = trimmed;
-  }
-
-  if (descriptionText.length < 60) {
-    return { error: "That looks too short to parse — paste the full JD or a longer link." };
-  }
-
-  const ai = await parseJobDescription(descriptionText);
-  const parsed: ParsedJobDescription = ai.data ?? {};
-
-  // Backfill from scraped DOM where AI missed.
-  if (!parsed.title && scrapedTitle) parsed.title = scrapedTitle;
-  if (!parsed.company && scrapedCompany) parsed.company = scrapedCompany;
-  if (!parsed.location && scrapedLocation) parsed.location = scrapedLocation;
-
-  const aiLocations = normalizeLocations(parsed.locations);
-  const scrapedLocations = normalizeLocations(scrapedLocation);
-  const legacyLocations = normalizeLocations(parsed.location);
-  // Prefer AI-parsed multi-location, then scraped, then legacy single-string.
-  const locations = aiLocations.length
-    ? aiLocations
-    : scrapedLocations.length
-      ? scrapedLocations
-      : legacyLocations;
-
-  return {
-    description_raw: descriptionText,
-    source,
-    url,
-    scrapeSource,
-    parsed,
-    locations,
-    degraded: ai.degraded,
-    warning: ai.error,
-  };
+/** Smart-capture: URL or pasted JD → structured preview for {@link createJob}. */
+export async function parseAndPreviewJob(input: string) {
+  return runParseAndPreviewJob(input);
 }
 
 /**
@@ -458,22 +371,6 @@ export async function addApplicationNote(applicationId: string, content: string)
     })
     .eq("id", applicationId);
 
-  revalidateApps();
-  return { success: true };
-}
-
-export async function deleteApplication(applicationId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("applications").delete().eq("id", applicationId);
-  if (error) return { error: error.message };
-  revalidateApps();
-  return { success: true };
-}
-
-export async function deleteJob(jobId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("jobs").delete().eq("id", jobId);
-  if (error) return { error: error.message };
   revalidateApps();
   return { success: true };
 }

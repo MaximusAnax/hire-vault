@@ -2,12 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
-import type { Profile } from "@hirevault/types";
+import type { Profile, Skill } from "@hirevault/types";
 import { updateProfile } from "@/lib/profile/actions";
+import { ProfileSkillsTags } from "@/components/profile/profile-skills-tags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ROLE_SUGGESTIONS = [
@@ -18,11 +18,13 @@ const ROLE_SUGGESTIONS = [
   "Tech Consulting",
 ] as const;
 
-const DEFAULT_SKILLS_TEX = String.raw`     \textbf{Machine Learning}{: Deep Algorithmic Knowledge of Decision Trees, K-Mean, Neural Networks.}\\
-     \textbf{Languages, Libraries, \& Frameworks}{: PyTorch, TensorFlow, Python, SQL, C++.}\\
-     \textbf{Data Infrastructure}{: AWS, PostgreSQL, Docker, CI/CD Pipelines.}`;
-
-export function ProfileHeaderForm({ profile }: { profile: Profile }) {
+export function ProfileHeaderForm({
+  profile,
+  skills,
+}: {
+  profile: Profile;
+  skills: Skill[];
+}) {
   const [pending, startTransition] = useTransition();
   const [roles, setRoles] = useState<string[]>(() => profile.target_roles ?? []);
   const [roleDraft, setRoleDraft] = useState("");
@@ -143,21 +145,7 @@ export function ProfileHeaderForm({ profile }: { profile: Profile }) {
             )}
           </div>
 
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="technical_skills_tex">Technical skills (LaTeX)</Label>
-            <p className="text-xs text-muted-foreground">
-              Lines inside the resume Technical Skills section. Use{" "}
-              <code className="text-[11px]">\textbf{"{Category}"}</code> and{" "}
-              <code className="text-[11px]">{"{skills}"}</code> format from your template.
-            </p>
-            <Textarea
-              id="technical_skills_tex"
-              name="technical_skills_tex"
-              rows={5}
-              className="font-mono text-xs"
-              defaultValue={profile.technical_skills_tex?.trim() || DEFAULT_SKILLS_TEX}
-            />
-          </div>
+          <ProfileSkillsTags skills={skills} />
 
           <div className="space-y-2">
             <Label htmlFor="location">Location</Label>

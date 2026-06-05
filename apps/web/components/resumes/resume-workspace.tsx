@@ -10,6 +10,10 @@ import {
   deleteTailoredResume,
   getResumePdfDownloadUrl,
 } from "@/lib/resumes/actions";
+import type { ResumeSummary } from "@/lib/resumes/resume-summary";
+import { resumeBuilderUrl } from "@/lib/resumes/urls";
+import { ResumeApplicationPicker } from "@/components/resumes/resume-application-picker";
+import { ResumeSummaryBadge } from "@/components/resumes/resume-summary-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -21,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 export interface ApplicationRow {
   id: string;
   job_id: string;
@@ -48,20 +53,16 @@ function formatVersionDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function buildResumesUrl(applicationId: string, versionId?: string) {
-  const params = new URLSearchParams({ application: applicationId });
-  if (versionId) params.set("version", versionId);
-  return `/resumes?${params.toString()}`;
-}
-
 export function ResumeWorkspace({
   applications,
   resumes,
+  resumeSummaries,
   selectedApplicationId,
   selectedVersionId,
 }: {
   applications: ApplicationRow[];
   resumes: ResumeRow[];
+  resumeSummaries: Record<string, ResumeSummary>;
   selectedApplicationId?: string;
   selectedVersionId?: string;
 }) {
@@ -70,16 +71,10 @@ export function ResumeWorkspace({
   const [status, setStatus] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const effectiveApplicationId = useMemo(() => {
-    if (
-      selectedApplicationId &&
-      applications.some((a) => a.id === selectedApplicationId)
-    ) {
-      return selectedApplicationId;
-    }
-    return applications[0]?.id;
-  }, [applications, selectedApplicationId]);
-
+  const inBuilderMode = Boolean(
+    selectedApplicationId && applications.some((a) => a.id === selectedApplicationId)
+  );
+  const effectiveApplicationId = inBuilderMode ? selectedApplicationId : undefined;
   const selectedApplication = applications.find((a) => a.id === effectiveApplicationId);
 
   const appVersions = useMemo(
@@ -91,33 +86,28 @@ export function ResumeWorkspace({
   );
 
   const effectiveVersionId = useMemo(() => {
-    if (appVersions.length === 0) return undefined;
+    if (!inBuilderMode || appVersions.length === 0) return undefined;
     if (selectedVersionId && appVersions.some((r) => r.id === selectedVersionId)) {
       return selectedVersionId;
     }
     return appVersions[0]?.id;
-  }, [appVersions, selectedVersionId]);
+  }, [appVersions, selectedVersionId, inBuilderMode]);
 
   const selectedResume = appVersions.find((r) => r.id === effectiveVersionId);
 
   useEffect(() => {
     if (!effectiveApplicationId || selectedVersionId || appVersions.length === 0) return;
-    router.replace(buildResumesUrl(effectiveApplicationId, appVersions[0].id));
+    router.replace(resumeBuilderUrl(effectiveApplicationId, appVersions[0].id));
   }, [effectiveApplicationId, selectedVersionId, appVersions, router]);
-
-  function selectApplication(applicationId: string) {
-    setStatus(null);
-    router.push(buildResumesUrl(applicationId));
-  }
 
   function selectVersion(versionId: string) {
     if (!effectiveApplicationId) return;
     setStatus(null);
-    router.push(buildResumesUrl(effectiveApplicationId, versionId));
+    router.push(resumeBuilderUrl(effectiveApplicationId, versionId));
   }
 
   function handleTailor() {
-    if (!selectedApplication?.job_id) return;
+    if (!selectedApplication?.job_id || !effectiveApplicationId) return;
     setStatus(null);
     startTransition(async () => {
       const res = await tailorResumeForJob(
@@ -128,8 +118,8 @@ export function ResumeWorkspace({
         setStatus(res.error);
         return;
       }
-      if (res.resumeId && effectiveApplicationId) {
-        router.push(buildResumesUrl(effectiveApplicationId, res.resumeId));
+      if (res.resumeId) {
+        router.push(resumeBuilderUrl(effectiveApplicationId, res.resumeId));
         router.refresh();
         setStatus(
           res.atsScore != null
@@ -173,7 +163,7 @@ export function ResumeWorkspace({
         setStatus(res.error);
         return;
       }
-      router.push(buildResumesUrl(effectiveApplicationId));
+      router.push(resumeBuilderUrl(effectiveApplicationId));
       router.refresh();
       setStatus("Version deleted");
     });
@@ -195,94 +185,91 @@ export function ResumeWorkspace({
     );
   }
 
+  if (!inBuilderMode) {
+    return (
+      <ResumeApplicationPicker
+        applications={applications}
+        resumeSummaries={resumeSummaries}
+      />
+    );
+  }
+
   const roleTitle = selectedApplication?.job?.title ?? "Role";
   const roleCompany = selectedApplication?.job?.company ?? "";
   const hasPdf = Boolean(selectedResume?.pdf_storage_path);
+  const appSummary = effectiveApplicationId
+    ? resumeSummaries[effectiveApplicationId]
+    : undefined;
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Role</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {applications.map((app) => {
-            const label = app.job
-              ? `${app.job.title} @ ${app.job.company}`
-              : "Untitled role";
-            return (
-              <Button
-                key={app.id}
-                variant={effectiveApplicationId === app.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => selectApplication(app.id)}
-              >
-                {label}
-              </Button>
-            );
-          })}
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/10 px-4 py-3">
+        <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
+          <Link href="/resumes">← All roles</Link>
+        </Button>
+        <span className="text-sm font-medium">
+          {roleCompany ? `${roleCompany} · ${roleTitle}` : roleTitle}
+        </span>
+        <ResumeSummaryBadge summary={appSummary} />
+      </div>
 
-      {effectiveApplicationId && (
-        <Card>
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">Versions</CardTitle>
-            <div className="flex flex-wrap gap-2">
-              {appVersions.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pending || !selectedApplication?.job_id}
-                  onClick={handleTailor}
-                >
-                  New version
-                </Button>
-              )}
-              {appVersions.length === 0 && (
-                <Button
-                  size="sm"
-                  disabled={pending || !selectedApplication?.job_id}
-                  onClick={handleTailor}
-                >
-                  {pending ? "Tailoring…" : "Tailor resume"}
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {appVersions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No tailored versions for this role yet. Tailoring rewrites top-matched experience
-                bullets for the job description.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {appVersions.map((r) => (
-                  <Button
-                    key={r.id}
-                    size="sm"
-                    variant={effectiveVersionId === r.id ? "default" : "outline"}
-                    onClick={() => selectVersion(r.id)}
-                  >
-                    v{r.version}
-                    {r.ats_score != null ? ` · ${r.ats_score}` : ""} · {formatVersionDate(r.generated_at)}
-                  </Button>
-                ))}
-              </div>
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base">Versions</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            {appVersions.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={pending || !selectedApplication?.job_id}
+                onClick={handleTailor}
+              >
+                New version
+              </Button>
             )}
             {appVersions.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Complete your{" "}
-                <Link href="/profile" className="text-primary hover:underline">
-                  profile
-                </Link>{" "}
-                (name, contact, technical skills) before exporting.
-              </p>
+              <Button
+                size="sm"
+                disabled={pending || !selectedApplication?.job_id}
+                onClick={handleTailor}
+              >
+                {pending ? "Tailoring…" : "Tailor resume"}
+              </Button>
             )}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {appVersions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No tailored versions for this role yet. Tailoring rewrites top-matched experience
+              bullets for the job description.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {appVersions.map((r) => (
+                <Button
+                  key={r.id}
+                  size="sm"
+                  variant={effectiveVersionId === r.id ? "default" : "outline"}
+                  onClick={() => selectVersion(r.id)}
+                >
+                  v{r.version}
+                  {r.ats_score != null ? ` · ${r.ats_score}` : ""} · {formatVersionDate(r.generated_at)}
+                </Button>
+              ))}
+            </div>
+          )}
+          {appVersions.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Complete your{" "}
+              <Link href="/profile" className="text-primary hover:underline">
+                profile
+              </Link>{" "}
+              (name, contact, technical skills) before exporting.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {selectedResume && (
         <Card>
