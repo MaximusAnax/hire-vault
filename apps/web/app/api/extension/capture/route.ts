@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
-import { parseJobDescription } from "@hirevault/ai-core";
+import type { CaptureSource } from "@hirevault/types";
+import {
+  AI_PARSE_MIN_CHARS,
+  buildCapturePreview,
+  type CaptureDraft,
+  type CaptureDraftSaveOptions,
+} from "@/lib/applications/capture-preview";
 import { getUserFromExtensionToken } from "@/lib/extension/auth";
-import { mergeExtensionCaptureFields, type ExtensionJobInput } from "@/lib/extension/merge-capture-fields";
+import { insertJobFromCaptureDraft } from "@/lib/extension/insert-capture-draft";
+import {
+  mergeExtensionCaptureFields,
+  type ExtensionJobInput,
+} from "@/lib/extension/merge-capture-fields";
+import { parseJobDescription } from "@hirevault/ai-core";
 import { createServiceClient } from "@/lib/supabase/service";
 
-/** Match web smart-capture preview gate in parseAndPreviewJob */
-const AI_PARSE_MIN_CHARS = 60;
+type CaptureRequestBody = CaptureDraftSaveOptions & {
+  draft?: CaptureDraft;
+  /** @deprecated Prefer `draft`; kept for extension versions that send raw scrape only. */
+  job?: ExtensionJobInput & { confidence?: "high" | "medium" | "low" };
+};
 
 export async function POST(request: Request) {
   const auth = await getUserFromExtensionToken(request.headers.get("authorization"));
@@ -13,14 +27,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: 401 });
   }
 
-  const body = (await request.json()) as {
-    job?: ExtensionJobInput;
-    createApplication?: boolean;
-  };
+  const body = (await request.json()) as CaptureRequestBody;
+  const skipAiParse = body.skip_ai_parse === true;
 
-  const job = body.job;
-  if (!job?.title?.trim()) {
-    return NextResponse.json({ error: "job.title required" }, { status: 400 });
+  if (skipAiParse) {
+    if (!body.draft?.title?.trim()) {
+      return NextResponse.json({ error: "draft.title required when skip_ai_parse" }, { status: 400 });
+    }
+  } else {
+    const job = body.job ?? draftToJobInput(body.draft);
+    if (!job?.title?.trim()) {
+      return NextResponse.json({ error: "job.title required" }, { status: 400 });
+    }
   }
 
   const supabase = createServiceClient();
@@ -31,109 +49,103 @@ export async function POST(request: Request) {
     );
   }
 
-  const description = job.description ?? "";
-  let parsed = null;
-  if (description.length >= AI_PARSE_MIN_CHARS) {
-    const result = await parseJobDescription(description);
-    if (result.data) parsed = result.data;
-  }
+  let draft: CaptureDraft;
+  let description_parsed = null;
 
-  const merged = mergeExtensionCaptureFields(job, parsed);
-  const jobUrl = job.url?.trim() || null;
-
-  const jobRow = {
-    user_id: auth.userId,
-    title: merged.title,
-    company: merged.company,
-    location: merged.primaryLocation,
-    locations: merged.locations,
-    url: jobUrl,
-    description_raw: description || null,
-    description_parsed: merged.parsed,
-    tech_stack: merged.tech_stack,
-    required_qualifications: merged.required_qualifications,
-    preferred_qualifications: merged.preferred_qualifications,
-    salary_range: merged.salary_range,
-    job_type: merged.job_type,
-    role_season: merged.role_season,
-    role_year: merged.role_year,
-    scraped_at: new Date().toISOString(),
-  };
-
-  let jobId: string;
-  let deduped = false;
-
-  if (jobUrl) {
-    const { data: existing } = await supabase
-      .from("jobs")
-      .select("id")
-      .eq("user_id", auth.userId)
-      .eq("url", jobUrl)
-      .maybeSingle();
-
-    if (existing?.id) {
-      jobId = existing.id;
-      deduped = true;
-      const { error: updateError } = await supabase.from("jobs").update(jobRow).eq("id", jobId);
-      if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
-      }
-    } else {
-      const { data: inserted, error } = await supabase
-        .from("jobs")
-        .insert(jobRow)
-        .select("id")
-        .single();
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-      if (!inserted?.id) return NextResponse.json({ error: "Job insert failed" }, { status: 500 });
-      jobId = inserted.id;
-    }
+  if (skipAiParse && body.draft) {
+    draft = body.draft;
   } else {
-    const { data: inserted, error } = await supabase
-      .from("jobs")
-      .insert(jobRow)
-      .select("id")
-      .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!inserted?.id) return NextResponse.json({ error: "Job insert failed" }, { status: 500 });
-    jobId = inserted.id;
+    const job = body.job ?? draftToJobInput(body.draft)!;
+    const description = job.description ?? body.draft?.description_raw ?? "";
+
+    if (description.length >= AI_PARSE_MIN_CHARS) {
+      const preview = await buildCapturePreview({
+        description,
+        url: job.url ?? body.draft?.url,
+        scrapedTitle: job.title ?? body.draft?.title,
+        scrapedCompany: job.company ?? body.draft?.company,
+        scrapedLocation: job.location,
+        scrapedLocations: job.locations ?? body.draft?.locations,
+        scrapeSource: body.draft?.scrape_source,
+        confidence: job.confidence ?? body.draft?.confidence,
+      });
+
+      if ("error" in preview) {
+        return NextResponse.json({ error: preview.error }, { status: 400 });
+      }
+
+      draft = preview.draft;
+      description_parsed = preview.parsed;
+    } else {
+      let parsed = null;
+      if (description.length > 0) {
+        const result = await parseJobDescription(description);
+        if (result.data) parsed = result.data;
+      }
+
+      const merged = mergeExtensionCaptureFields(
+        {
+          ...job,
+          description,
+          confidence: job.confidence ?? body.draft?.confidence,
+        },
+        parsed
+      );
+
+      draft = {
+        title: merged.title,
+        company: merged.company,
+        url: job.url ?? body.draft?.url,
+        description_raw: description,
+        job_type: merged.job_type,
+        role_season: merged.role_season,
+        role_year: merged.role_year,
+        locations: merged.locations,
+        tech_stack: merged.tech_stack,
+        required_qualifications: merged.required_qualifications,
+        preferred_qualifications: merged.preferred_qualifications,
+        salary_range: merged.salary_range,
+        priority: body.draft?.priority ?? null,
+        scrape_source: body.draft?.scrape_source,
+        confidence: job.confidence ?? body.draft?.confidence,
+      };
+      description_parsed = merged.parsed;
+    }
   }
 
-  let applicationId: string | undefined;
-  if (body.createApplication !== false) {
-    const { data: existingApp } = await supabase
-      .from("applications")
-      .select("id")
-      .eq("user_id", auth.userId)
-      .eq("job_id", jobId)
-      .maybeSingle();
+  const priority =
+    body.priority !== undefined ? body.priority : draft.priority ?? null;
 
-    if (existingApp?.id) {
-      applicationId = existingApp.id;
-    } else {
-      const { data: app, error: appError } = await supabase
-        .from("applications")
-        .insert({
-          user_id: auth.userId,
-          job_id: jobId,
-          status: "saved",
-          priority: 3,
-          notes: [],
-        })
-        .select("id")
-        .single();
+  const result = await insertJobFromCaptureDraft(supabase, {
+    userId: auth.userId,
+    draft,
+    description_parsed,
+    priority,
+    needs_review: body.needs_review ?? false,
+    capture_source: (body.capture_source ?? "extension") as CaptureSource,
+    createApplication: body.createApplication !== false,
+  });
 
-      if (appError) {
-        return NextResponse.json({ error: appError.message }, { status: 500 });
-      }
-      applicationId = app?.id;
-    }
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({
     ok: true,
-    jobId,
-    applicationId,
-    deduped,
+    jobId: result.jobId,
+    applicationId: result.applicationId,
+    deduped: result.deduped,
   });
+}
+
+function draftToJobInput(draft?: CaptureDraft): ExtensionJobInput | undefined {
+  if (!draft) return undefined;
+  return {
+    title: draft.title,
+    company: draft.company,
+    url: draft.url,
+    description: draft.description_raw,
+    locations: draft.locations,
+    confidence: draft.confidence,
+  };
 }

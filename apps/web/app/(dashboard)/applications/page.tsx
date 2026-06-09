@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { getApplicationsWithJobs, getApplicationStats } from "@/lib/applications/queries";
+import { CaptureReviewPanel } from "@/components/applications/capture-review-panel";
 import { getResumeSummariesByApplication } from "@/lib/resumes/queries";
 import { KanbanBoard } from "@/components/applications/kanban-board";
 import { ApplicationListView } from "@/components/applications/application-list-view";
@@ -26,6 +27,7 @@ export default async function ApplicationsPage({
     location: params.location,
     activeOnly: params.active === "1",
     remoteOnly: params.remote === "1",
+    needsReview: params.needsReview === "1",
     sort:
       (params.sort as
         | "updated"
@@ -37,11 +39,14 @@ export default async function ApplicationsPage({
 
   const view = params.view === "list" ? "list" : "board";
 
-  const [applications, stats, resumeSummaries] = await Promise.all([
+  const [applications, needsReviewApps, stats, resumeSummaries] = await Promise.all([
     getApplicationsWithJobs(filters),
+    getApplicationsWithJobs({ needsReview: true }),
     getApplicationStats(),
     getResumeSummariesByApplication(),
   ]);
+
+  const needsReviewCount = needsReviewApps.length;
 
   return (
     <div className="space-y-6">
@@ -61,12 +66,14 @@ export default async function ApplicationsPage({
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <Suspense fallback={null}>
-          <ApplicationFilters />
+          <ApplicationFilters needsReviewCount={needsReviewCount} />
         </Suspense>
         <Suspense fallback={null}>
           <ApplicationViewToggle />
         </Suspense>
       </div>
+
+      {needsReviewCount > 0 ? <CaptureReviewPanel applications={needsReviewApps} /> : null}
 
       {view === "list" ? (
         <ApplicationListView
@@ -77,9 +84,9 @@ export default async function ApplicationsPage({
         <KanbanBoard applications={applications} resumeSummaries={resumeSummaries} />
       )}
 
-      <div>
+      <div id="add">
         <h2 className="text-lg font-semibold mb-3">Add application</h2>
-        <AddApplicationForm />
+        <AddApplicationForm initialAddUrl={params.addUrl} />
       </div>
     </div>
   );

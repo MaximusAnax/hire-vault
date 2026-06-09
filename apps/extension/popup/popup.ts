@@ -1,204 +1,304 @@
-import type { ScrapedJob } from "../src/shared/types";
-import { scrapeModeLabel } from "../src/content/scrapers-logic";
+import type { CaptureDraft, ScrapedJob } from "../src/shared/types";
+import {
+  COHORT_YEAR_OPTIONS,
+  formatTermBadge,
+  jobTypeLabel,
+  locationsSummary,
+  type PopupMinorFields,
+} from "../src/shared/capture-labels";
+import {
+  applicationsUrl,
+  draftFromMinorEdits,
+  openWebTab,
+  previewScrapedJob,
+  saveCaptureDraft,
+  scrapeActiveTab,
+} from "../src/popup/capture-flow";
 
-const STORAGE_KEY = "hirevault_last_scrape";
 const LAST_SYNC_KEY = "hirevault_last_sync";
-const CONTENT_SCRIPT = "content/job-detector.js";
+
+type PopupState = "idle" | "capturing" | "previewing" | "saving";
 
 const els = {
   status: document.getElementById("status")!,
-  title: document.getElementById("job-title")!,
-  company: document.getElementById("job-company")!,
   apiBase: document.getElementById("api-base") as HTMLInputElement,
-  token: document.getElementById("api-token") as HTMLInputElement,
-  capture: document.getElementById("btn-capture")!,
-  sync: document.getElementById("btn-sync")!,
+  apiToken: document.getElementById("api-token") as HTMLInputElement,
+  stateIdle: document.getElementById("state-idle")!,
+  stateBusy: document.getElementById("state-busy")!,
+  statePreview: document.getElementById("state-preview")!,
+  busyLabel: document.getElementById("busy-label")!,
+  metaBadges: document.getElementById("meta-badges")!,
+  priorityStars: document.getElementById("priority-stars")!,
+  fieldTitle: document.getElementById("field-title") as HTMLInputElement,
+  fieldCompany: document.getElementById("field-company") as HTMLInputElement,
+  fieldJobType: document.getElementById("field-job-type") as HTMLSelectElement,
+  fieldRoleSeason: document.getElementById("field-role-season") as HTMLSelectElement,
+  fieldRoleYear: document.getElementById("field-role-year") as HTMLSelectElement,
+  btnCapture: document.getElementById("btn-capture")!,
+  btnSave: document.getElementById("btn-save")!,
+  btnSaveReview: document.getElementById("btn-save-review")!,
+  btnEditWeb: document.getElementById("btn-edit-web")!,
+  btnDiscard: document.getElementById("btn-discard")!,
   openApp: document.getElementById("open-app") as HTMLAnchorElement,
   pasteDetails: document.getElementById("paste-details") as HTMLDetailsElement,
   pasteTitle: document.getElementById("paste-title") as HTMLInputElement,
   pasteCompany: document.getElementById("paste-company") as HTMLInputElement,
   pasteDesc: document.getElementById("paste-desc") as HTMLTextAreaElement,
-  pasteSave: document.getElementById("btn-paste-save")!,
+  btnPastePreview: document.getElementById("btn-paste-preview")!,
 };
 
-let currentJob: ScrapedJob | null = null;
+let popupState: PopupState = "idle";
+let currentDraft: CaptureDraft | null = null;
 let activeTabUrl: string | undefined;
-
-function isRestrictedTabUrl(url?: string): boolean {
-  if (!url) return true;
-  const u = url.toLowerCase();
-  return (
-    u.startsWith("chrome://") ||
-    u.startsWith("chrome-extension://") ||
-    u.startsWith("edge://") ||
-    u.startsWith("about:") ||
-    u.endsWith(".pdf") ||
-    u.includes("chrome.google.com/webstore")
-  );
-}
-
-async function loadSettings() {
-  const { apiBase, token } = await chrome.storage.sync.get(["apiBase", "token"]);
-  els.apiBase.value = ((apiBase as string) || "http://localhost:3000").trim();
-  els.token.value = cleanTokenInput((token as string) || "");
-}
+let priorityValue = 3;
 
 function cleanTokenInput(value: string): string {
   return value.trim().replace(/^\s*bearer\s+/i, "").replace(/[\u200B-\u200D\uFEFF]/g, "");
 }
 
+async function loadSettings() {
+  const stored = await chrome.storage.sync.get(["apiBase", "token"]);
+  els.apiBase.value = ((stored.apiBase as string) || "http://localhost:3000").trim();
+  els.apiToken.value = cleanTokenInput((stored.token as string) || "");
+}
+
 async function saveSettings() {
   await chrome.storage.sync.set({
     apiBase: els.apiBase.value.trim(),
-    token: cleanTokenInput(els.token.value),
+    token: cleanTokenInput(els.apiToken.value),
   });
 }
 
-function showJob(job: ScrapedJob | null) {
-  currentJob = job;
-  if (!job) {
-    els.title.textContent = "No job captured yet";
-    els.company.textContent = "";
-    return;
-  }
-  els.title.textContent = job.title;
-  els.company.textContent = `${job.company} · ${scrapeModeLabel(job)}`;
+function apiBase(): string {
+  return els.apiBase.value.trim() || "http://localhost:3000";
 }
 
-function setOpenAppLink(jobId?: string) {
-  const base = els.apiBase.value.replace(/\/$/, "");
-  els.openApp.href = jobId
-    ? `${base}/applications?captured=1&job=${jobId}`
-    : `${base}/applications?captured=1`;
+function token(): string {
+  return cleanTokenInput(els.apiToken.value);
+}
+
+function setPopupState(next: PopupState, message?: string) {
+  popupState = next;
+  els.stateIdle.classList.toggle("hidden", next !== "idle");
+  els.stateBusy.classList.toggle("hidden", next !== "capturing" && next !== "saving");
+  els.statePreview.classList.toggle("hidden", next !== "previewing");
+  if (message) els.status.textContent = message;
+  if (next === "capturing") els.busyLabel.textContent = "Reading this page…";
+  if (next === "saving") els.busyLabel.textContent = "Saving to HireVault…";
+}
+
+function populateYearOptions(selected?: number | null) {
+  els.fieldRoleYear.innerHTML = '<option value="">—</option>';
+  for (const year of COHORT_YEAR_OPTIONS) {
+    const opt = document.createElement("option");
+    opt.value = String(year);
+    opt.textContent = String(year);
+    if (selected === year) opt.selected = true;
+    els.fieldRoleYear.appendChild(opt);
+  }
+}
+
+function renderPriorityStars() {
+  els.priorityStars.innerHTML = "";
+  for (let n = 1; n <= 5; n++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `star${n <= priorityValue ? " active" : ""}`;
+    btn.textContent = "★";
+    btn.title = `Priority ${n}`;
+    btn.addEventListener("click", () => {
+      priorityValue = n;
+      renderPriorityStars();
+      updateMetaBadges();
+    });
+    els.priorityStars.appendChild(btn);
+  }
+}
+
+function readMinorFields(): PopupMinorFields {
+  return {
+    title: els.fieldTitle.value,
+    company: els.fieldCompany.value,
+    job_type: els.fieldJobType.value,
+    role_season: els.fieldRoleSeason.value,
+    role_year: els.fieldRoleYear.value,
+    priority: priorityValue,
+  };
+}
+
+function updateMetaBadges() {
+  const minor = readMinorFields();
+  const year = minor.role_year ? Number(minor.role_year) : null;
+  const term = formatTermBadge(
+    (minor.role_season as CaptureDraft["role_season"]) || null,
+    year
+  );
+  const locs = currentDraft?.locations ?? [];
+  const jobType = jobTypeLabel((minor.job_type as CaptureDraft["job_type"]) || null);
+
+  els.metaBadges.innerHTML = "";
+  const items: { text: string; className?: string }[] = [];
+  if (term) items.push({ text: term, className: "term" });
+  items.push({ text: jobType });
+  items.push({ text: locationsSummary(locs) });
+  items.push({ text: `Priority ${minor.priority}` });
+  if (currentDraft?.degraded) items.push({ text: "AI degraded", className: "warn" });
+  if (currentDraft?.warning) items.push({ text: "Check on web", className: "warn" });
+
+  for (const item of items) {
+    const span = document.createElement("span");
+    span.className = `badge${item.className ? ` ${item.className}` : ""}`;
+    span.textContent = item.text;
+    els.metaBadges.appendChild(span);
+  }
+}
+
+function fillPreviewFromDraft(draft: CaptureDraft) {
+  currentDraft = draft;
+  priorityValue = draft.priority ?? 3;
+  els.fieldTitle.value = draft.title;
+  els.fieldCompany.value = draft.company;
+  els.fieldJobType.value = draft.job_type ?? "";
+  els.fieldRoleSeason.value = draft.role_season ?? "";
+  populateYearOptions(draft.role_year);
+  renderPriorityStars();
+  updateMetaBadges();
+}
+
+function readDraftForSave(): CaptureDraft | null {
+  if (!currentDraft) return null;
+  return draftFromMinorEdits(currentDraft, readMinorFields());
+}
+
+function setOpenAppLink(applicationId?: string) {
+  els.openApp.href = applicationsUrl(apiBase(), { applicationId });
   els.openApp.classList.remove("hidden");
 }
 
-async function injectContentScript(tabId: number): Promise<void> {
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    files: [CONTENT_SCRIPT],
-  });
-}
-
-async function messageTab<T extends { job?: ScrapedJob }>(
-  tabId: number,
-  type: "SCRAPE_JOB" | "DUMP_PAGE"
-): Promise<T | null> {
-  try {
-    return (await chrome.tabs.sendMessage(tabId, { type })) as T;
-  } catch {
-    try {
-      await injectContentScript(tabId);
-      return (await chrome.tabs.sendMessage(tabId, { type })) as T;
-    } catch {
-      return null;
-    }
-  }
-}
-
-function prefillPaste(job: ScrapedJob) {
-  els.pasteTitle.value = job.title === "Untitled role" ? "" : job.title;
-  els.pasteCompany.value =
-    job.company === "Unknown company" ? "" : job.company;
-  els.pasteDesc.value = job.description;
-}
-
-function openPastePanel() {
-  els.pasteDetails.open = true;
-}
-
-async function captureFromPage() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  activeTabUrl = tab?.url;
-  els.pasteDetails.open = false;
-
-  if (!tab?.id) {
-    showJob(null);
-    els.status.textContent = "No active tab.";
-    return;
-  }
-
-  if (isRestrictedTabUrl(tab.url)) {
-    showJob(null);
-    els.status.textContent = "Open a normal browser tab with a job posting first.";
-    openPastePanel();
-    return;
-  }
-
-  els.status.textContent = "Reading this page…";
-
-  let res = await messageTab(tab.id, "SCRAPE_JOB");
-  if (res?.job) {
-    showJob(res.job);
-    els.status.textContent = "Captured — click Save when ready.";
-    return;
-  }
-
-  res = await messageTab(tab.id, "DUMP_PAGE");
-  if (res?.job) {
-    showJob(res.job);
-    els.status.textContent = "Captured page text — click Save when ready.";
-    return;
-  }
-
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
-  const cached = stored[STORAGE_KEY]?.job as ScrapedJob | undefined;
-  if (cached) {
-    showJob(cached);
-    els.status.textContent =
-      "Using last capture on this browser — reload the job tab, then Capture again.";
-    return;
-  }
-
-  showJob(null);
-  els.status.textContent =
-    "Could not read this tab. Reload the job page, then Capture again — or paste manually below.";
-  openPastePanel();
-}
-
-async function syncJob() {
+async function runPreviewFromScraped(scraped: ScrapedJob) {
   await saveSettings();
-  if (!currentJob) {
-    els.status.textContent = "Capture or paste a job first.";
-    return;
-  }
-  els.status.textContent = "Saving…";
+  setPopupState("capturing", "Building preview…");
   els.openApp.classList.add("hidden");
 
-  const res = await chrome.runtime.sendMessage({
-    type: "SYNC_JOB",
-    apiBase: els.apiBase.value.trim(),
-    token: cleanTokenInput(els.token.value),
-    payload: {
-      job: {
-        ...currentJob,
-        url: currentJob.url || activeTabUrl || "",
-        locations: currentJob.location ? [currentJob.location] : [],
-      },
-      createApplication: true,
-    },
-  });
-
-  if (res?.error) {
-    els.status.textContent = res.error;
+  const preview = await previewScrapedJob(scraped, apiBase(), token());
+  if (preview?.error && !preview.draft) {
+    setPopupState("idle", preview.error);
     return;
   }
 
-  els.status.textContent = res.deduped ? "Updated existing job." : "Saved.";
-  if (res.jobId) {
+  const draft = preview.draft as CaptureDraft;
+  let status = "Quick edits here — full review on web if needed.";
+  if (preview.usedFixture) status = preview.warning ?? "Using local fixture — edit before saving.";
+  else if (preview.warning) status = preview.warning;
+  else if (preview.degraded) status = "AI parse degraded — use Edit on web for full fields.";
+
+  fillPreviewFromDraft(draft);
+  setPopupState("previewing", status);
+}
+
+async function runCapture() {
+  await saveSettings();
+  setPopupState("capturing", "Reading this page…");
+  els.openApp.classList.add("hidden");
+  els.pasteDetails.open = false;
+
+  const { job, tabUrl } = await scrapeActiveTab();
+  activeTabUrl = tabUrl;
+  if (!job) {
+    setPopupState("idle", "Open a job posting tab, or paste manually below.");
+    els.pasteDetails.open = true;
+    return;
+  }
+
+  await runPreviewFromScraped(job);
+}
+
+async function runSave(needsReview: boolean) {
+  const draft = readDraftForSave();
+  if (!draft) {
+    setPopupState("idle", "Capture a job first.");
+    return;
+  }
+
+  await saveSettings();
+  setPopupState("saving");
+  els.openApp.classList.add("hidden");
+
+  const res = await saveCaptureDraft(draft, apiBase(), token(), needsReview);
+  if (res?.error) {
+    setPopupState("previewing", res.error);
+    return;
+  }
+
+  if (res.applicationId || res.jobId) {
     await chrome.storage.local.set({
-      [LAST_SYNC_KEY]: { jobId: res.jobId, applicationId: res.applicationId, at: Date.now() },
+      [LAST_SYNC_KEY]: {
+        jobId: res.jobId,
+        applicationId: res.applicationId,
+        at: Date.now(),
+      },
     });
-    setOpenAppLink(res.jobId);
+  }
+
+  if (needsReview) {
+    const url = applicationsUrl(apiBase(), {
+      applicationId: res.applicationId,
+      needsReview: !res.applicationId,
+    });
+    openWebTab(url);
+    setPopupState("idle", res.deduped ? "Updated — opened web review." : "Saved — finish on web.");
+  } else {
+    const msg = res.deduped ? "Updated existing job." : "Saved to HireVault.";
+    if (res.applicationId) setOpenAppLink(res.applicationId);
+    setPopupState("idle", msg);
+  }
+
+  currentDraft = null;
+}
+
+function runEditOnWeb() {
+  const draft = readDraftForSave();
+  const url = draft?.url || activeTabUrl;
+  if (!url) {
+    setPopupState("previewing", "No job URL — save or paste a link first.");
+    return;
+  }
+  openWebTab(applicationsUrl(apiBase(), { addUrl: url }));
+  setPopupState("previewing", "Opened HireVault — full edit there (not saved yet).");
+}
+
+function discardPreview() {
+  currentDraft = null;
+  els.openApp.classList.add("hidden");
+  setPopupState("idle", "Capture a job from the active tab.");
+}
+
+function bindMetaRefresh() {
+  for (const el of [
+    els.fieldTitle,
+    els.fieldCompany,
+    els.fieldJobType,
+    els.fieldRoleSeason,
+    els.fieldRoleYear,
+  ]) {
+    el.addEventListener("input", () => updateMetaBadges());
+    el.addEventListener("change", () => updateMetaBadges());
   }
 }
 
-els.capture.addEventListener("click", () => void captureFromPage());
-els.sync.addEventListener("click", () => void syncJob());
-els.apiBase.addEventListener("change", () => void saveSettings());
-els.token.addEventListener("change", () => void saveSettings());
+populateYearOptions();
+renderPriorityStars();
+bindMetaRefresh();
 
-els.pasteSave.addEventListener("click", () => {
+els.btnCapture.addEventListener("click", () => void runCapture());
+els.btnSave.addEventListener("click", () => void runSave(false));
+els.btnSaveReview.addEventListener("click", () => void runSave(true));
+els.btnEditWeb.addEventListener("click", () => runEditOnWeb());
+els.btnDiscard.addEventListener("click", () => discardPreview());
+els.apiBase.addEventListener("change", () => void saveSettings());
+els.apiToken.addEventListener("change", () => void saveSettings());
+
+els.btnPastePreview.addEventListener("click", () => {
   const job: ScrapedJob = {
     title: els.pasteTitle.value.trim() || "Untitled role",
     company: els.pasteCompany.value.trim() || "Unknown company",
@@ -207,9 +307,12 @@ els.pasteSave.addEventListener("click", () => {
     source: "manual_paste",
     confidence: "low",
   };
-  showJob(job);
-  els.status.textContent = "Pasted job ready — click Save.";
+  if (job.description.length < 60) {
+    els.status.textContent = "Paste a longer job description (60+ chars).";
+    return;
+  }
   els.pasteDetails.open = false;
+  void runPreviewFromScraped(job);
 });
 
-void loadSettings().then(() => void captureFromPage());
+void loadSettings();

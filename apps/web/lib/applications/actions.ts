@@ -12,6 +12,8 @@ import {
 } from "./preview";
 import { normalizeLocations } from "./locations";
 import { resolveRoleTiming } from "./role-timing";
+import { deriveCaptureFitHint } from "./capture-fit-hint";
+import { getProfileForUser } from "@/lib/profile/get-profile";
 
 function revalidateApps() {
   revalidatePath("/applications");
@@ -106,7 +108,8 @@ export async function createJob(formData: FormData) {
       tech_stack,
       required_qualifications,
       preferred_qualifications,
-      salary_range: parsed?.salary_range ?? null,
+      salary_range:
+        parsed?.salary_range ?? ((formData.get("salary_range") as string) || null),
       job_type: jobType,
       role_season: timing.role_season,
       role_year: timing.role_year,
@@ -127,7 +130,32 @@ export type {
 
 /** Smart-capture: URL or pasted JD → structured preview for {@link createJob}. */
 export async function parseAndPreviewJob(input: string) {
-  return runParseAndPreviewJob(input);
+  const result = await runParseAndPreviewJob(input);
+  if ("error" in result || ("blocked" in result && result.blocked)) {
+    return result;
+  }
+
+  const preview = result as ParseAndPreviewJobResult;
+
+  const profile = await getProfileForUser();
+  if (!profile?.target_roles?.length) {
+    return preview;
+  }
+
+  const timing = resolveRoleTiming({
+    title: preview.parsed.title ?? "",
+    role_season: preview.parsed.role_season ?? null,
+    role_year: preview.parsed.role_year ?? null,
+  });
+  const fit_hint = deriveCaptureFitHint({
+    target_roles: profile.target_roles,
+    title: timing.title,
+    job_type: preview.parsed.job_type ?? null,
+    role_season: timing.role_season,
+    role_year: timing.role_year,
+  });
+
+  return fit_hint ? { ...preview, fit_hint } : preview;
 }
 
 /**
@@ -335,6 +363,31 @@ export async function updateApplication(
       last_updated: new Date().toISOString(),
     })
     .eq("id", applicationId);
+
+  if (error) return { error: error.message };
+  revalidateApps();
+  return { success: true };
+}
+
+/**
+ * Clears `needs_review` on an application after web inbox polish.
+ * Requires Stream C migration (`applications.needs_review` column).
+ */
+export async function markApplicationReviewed(applicationId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("applications")
+    .update({
+      needs_review: false,
+      last_updated: new Date().toISOString(),
+    })
+    .eq("id", applicationId)
+    .eq("user_id", user.id);
 
   if (error) return { error: error.message };
   revalidateApps();

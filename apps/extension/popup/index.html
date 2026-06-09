@@ -8,15 +8,18 @@
       * { box-sizing: border-box; }
       body {
         font-family: system-ui, sans-serif;
-        width: 300px;
+        width: 380px;
+        max-height: 580px;
+        overflow-y: auto;
         margin: 0;
         padding: 12px;
         background: #0f1117;
         color: #e4e4e7;
         font-size: 12px;
+        line-height: 1.4;
       }
-      h1 { font-size: 14px; margin: 0 0 6px; }
-      .muted { color: #a1a1aa; margin: 0 0 8px; line-height: 1.4; }
+      h1 { font-size: 14px; margin: 0 0 4px; }
+      .muted { color: #a1a1aa; margin: 0 0 8px; }
       .card {
         background: #18181b;
         border: 1px solid #27272a;
@@ -24,8 +27,8 @@
         padding: 10px;
         margin-bottom: 8px;
       }
-      label { display: block; margin: 6px 0 2px; color: #a1a1aa; }
-      input, textarea {
+      label { display: block; margin: 6px 0 2px; color: #a1a1aa; font-size: 11px; }
+      input, textarea, select {
         width: 100%;
         background: #09090b;
         border: 1px solid #3f3f46;
@@ -34,7 +37,7 @@
         padding: 6px 8px;
         font-size: 12px;
       }
-      textarea { min-height: 88px; resize: vertical; }
+      textarea { min-height: 72px; resize: vertical; font-family: inherit; }
       button, a.btn-link {
         display: block;
         width: 100%;
@@ -50,47 +53,126 @@
       }
       .primary { background: #8b5cf6; color: #fff; }
       .secondary { background: #27272a; color: #e4e4e7; }
-      .hidden { display: none; }
-      #job-preview { margin-bottom: 4px; }
-      #job-preview strong { display: block; margin-bottom: 2px; }
-      details { margin-top: 8px; }
+      .ghost { background: transparent; border: 1px solid #3f3f46; color: #e4e4e7; }
+      .hidden { display: none !important; }
+      .badges { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 8px; }
+      .badge {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: #27272a;
+        color: #d4d4d8;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .badge.term { background: #312e81; color: #c4b5fd; }
+      .badge.warn { background: #422006; color: #fdba74; }
+      .stars { display: flex; gap: 4px; margin-top: 4px; }
+      .star {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #3f3f46;
+        border-radius: 6px;
+        background: #09090b;
+        color: #71717a;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0;
+      }
+      .star.active { color: #fbbf24; border-color: #a16207; }
+      .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       details summary {
         cursor: pointer;
         color: #a1a1aa;
         font-size: 11px;
+        font-weight: 600;
         list-style: none;
       }
       details summary::-webkit-details-marker { display: none; }
       details[open] summary { margin-bottom: 8px; color: #e4e4e7; }
-      .settings summary { font-weight: 600; }
+      .hint { font-size: 10px; color: #71717a; margin-top: 4px; }
     </style>
   </head>
   <body>
     <h1>HireVault</h1>
-    <p id="status" class="muted">Loading…</p>
+    <p id="status" class="muted">Capture a job from the active tab.</p>
 
-    <div class="card">
-      <div id="job-preview">
-        <strong id="job-title">No job captured yet</strong>
-        <span class="muted" id="job-company"></span>
-      </div>
-      <button type="button" class="secondary" id="btn-capture">Capture from page</button>
-      <button type="button" class="primary" id="btn-sync">Save to HireVault</button>
-      <a id="open-app" class="btn-link secondary hidden" target="_blank" rel="noopener">Open in HireVault</a>
-
-      <details id="paste-details">
-        <summary>Paste job manually</summary>
-        <label>Title</label>
-        <input id="paste-title" />
-        <label>Company</label>
-        <input id="paste-company" />
-        <label>Description</label>
-        <textarea id="paste-desc" placeholder="Paste the job posting text…"></textarea>
-        <button type="button" class="secondary" id="btn-paste-save">Use pasted job</button>
-      </details>
+    <div id="state-idle" class="card">
+      <button type="button" class="primary" id="btn-capture">Capture from page</button>
     </div>
 
-    <details class="card settings">
+    <div id="state-busy" class="card hidden">
+      <p class="muted" id="busy-label">Working…</p>
+    </div>
+
+    <div id="state-preview" class="hidden">
+      <div class="card">
+        <label for="field-title">Title</label>
+        <input id="field-title" placeholder="Role title" />
+        <label for="field-company">Company</label>
+        <input id="field-company" placeholder="Company" />
+
+        <div class="badges" id="meta-badges"></div>
+        <p class="hint">Edit quals, tech, and salary on the web app.</p>
+
+        <div class="row-2">
+          <div>
+            <label for="field-job-type">Job type</label>
+            <select id="field-job-type">
+              <option value="">—</option>
+              <option value="full_time">Full-time</option>
+              <option value="internship">Internship</option>
+              <option value="contract">Contract</option>
+            </select>
+          </div>
+          <div>
+            <label for="field-role-season">Term</label>
+            <select id="field-role-season">
+              <option value="">—</option>
+              <option value="spring">Spring</option>
+              <option value="summer">Summer</option>
+              <option value="fall">Fall</option>
+              <option value="winter">Winter</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div>
+            <label for="field-role-year">Cohort year</label>
+            <select id="field-role-year">
+              <option value="">—</option>
+            </select>
+          </div>
+          <div>
+            <label>Priority</label>
+            <div class="stars" id="priority-stars" role="group" aria-label="Application priority"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <button type="button" class="primary" id="btn-save">Save to HireVault</button>
+        <button type="button" class="secondary" id="btn-save-review">Review on web</button>
+        <button type="button" class="secondary" id="btn-edit-web">Edit on web</button>
+        <button type="button" class="ghost" id="btn-discard">Discard</button>
+        <a id="open-app" class="btn-link secondary hidden" target="_blank" rel="noopener">Open in HireVault</a>
+      </div>
+    </div>
+
+    <details class="card" id="paste-details">
+      <summary>Paste job manually</summary>
+      <label for="paste-title">Title</label>
+      <input id="paste-title" />
+      <label for="paste-company">Company</label>
+      <input id="paste-company" />
+      <label for="paste-desc">Description</label>
+      <textarea id="paste-desc" placeholder="Paste the job posting text…"></textarea>
+      <button type="button" class="secondary" id="btn-paste-preview">Preview pasted job</button>
+    </details>
+
+    <details class="card">
       <summary>Settings</summary>
       <label for="api-base">App URL</label>
       <input id="api-base" type="url" placeholder="http://localhost:3000" />
