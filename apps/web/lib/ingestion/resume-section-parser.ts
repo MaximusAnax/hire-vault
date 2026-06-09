@@ -114,6 +114,20 @@ function splitLocation(line: string): { left: string; location: string | null } 
   }
   const m = line.match(/^(.+?)\s{2,}(.+)$/);
   if (m) return { left: m[1].trim(), location: m[2].trim() };
+
+  const stateSuffix = line.trim().match(/^(.*),\s*([A-Z]{2})$/);
+  if (stateSuffix) {
+    const beforeState = stateSuffix[1].trim();
+    const spacedCity = beforeState.match(/^(.+?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)$/);
+    if (spacedCity) {
+      return { left: spacedCity[1].trim(), location: `${spacedCity[2]}, ${stateSuffix[2]}` };
+    }
+    const gluedCity = beforeState.match(/^(.+?)([A-Z][a-z]{3,})$/);
+    if (gluedCity) {
+      return { left: gluedCity[1].trim(), location: `${gluedCity[2]}, ${stateSuffix[2]}` };
+    }
+  }
+
   return { left: line.trim(), location: null };
 }
 

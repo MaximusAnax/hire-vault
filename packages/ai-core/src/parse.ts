@@ -23,6 +23,12 @@ export function isOpenAiConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
+/** Opt-in Haiku bullet polish after GPT parse (default off — tailoring polishes later). */
+export function isResumeImportPolishEnabled(): boolean {
+  const v = process.env.RESUME_IMPORT_POLISH?.trim().toLowerCase();
+  return v === "1" || v === "true";
+}
+
 function getClient(): OpenAI | null {
   if (!isOpenAiConfigured()) return null;
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -77,8 +83,10 @@ export async function parseResumeText(text: string): Promise<{
     if (!parsed.success) {
       return { data: null, error: parsed.error.message };
     }
-    const polished = await polishParsedResumeBullets(parsed.data);
-    return { data: polished };
+    const data = isResumeImportPolishEnabled()
+      ? await polishParsedResumeBullets(parsed.data)
+      : parsed.data;
+    return { data };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : "Parse failed" };
   }
@@ -234,8 +242,15 @@ export function validateProfileLocally(profile: {
   target_roles?: string[];
   experiences: { bullet_points?: string[] }[];
   skills: { name: string }[];
+  leadershipCount?: number;
+  projectsCount?: number;
 }): ProfileValidation {
   const suggestions: ProfileValidation["suggestions"] = [];
+  const leadershipCount = profile.leadershipCount ?? 0;
+  const projectsCount = profile.projectsCount ?? 0;
+  const campusBridge =
+    profile.experiences.length === 0 && leadershipCount + projectsCount >= 1;
+
   if (!profile.full_name?.trim()) {
     suggestions.push({
       field: "full_name",
@@ -253,8 +268,10 @@ export function validateProfileLocally(profile: {
   if (profile.experiences.length === 0) {
     suggestions.push({
       field: "experiences",
-      severity: "error",
-      message: "No work experience on profile.",
+      severity: campusBridge ? "info" : "error",
+      message: campusBridge
+        ? "No work experience yet — leadership and projects can fill the gap for early career tailoring."
+        : "No work experience on profile.",
     });
   }
   const thinBullets = profile.experiences.filter(

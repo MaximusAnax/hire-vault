@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileForUser } from "@/lib/profile/get-profile";
+import { getTailoringReadiness } from "@/lib/profile/readiness";
+import { getAwaitingConfirmRun } from "@/lib/ingestion/queries";
 import { ResumeUpload } from "@/components/ingestion/resume-upload";
 import { LinkedInImport } from "@/components/ingestion/linkedin-import";
-import { DedupConflictsPanel } from "@/components/ingestion/dedup-conflicts";
+import { ImportPreviewPanel } from "@/components/ingestion/import-preview-panel";
+import { DedupConflictsPanel, type DedupConflictWithExisting } from "@/components/ingestion/dedup-conflicts";
+import { ProfileReadinessBanner } from "@/components/profile/profile-readiness-banner";
+import { isLinkedInOAuthConfigured } from "@/lib/linkedin/config";
+import { getLinkedInConnection } from "@/lib/linkedin/queries";
 import type { DedupConflict, IngestionRun } from "@hirevault/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +21,12 @@ export default async function ProfileImportPage() {
   }
 
   const supabase = await createClient();
-  const [runsRes, conflictsRes] = await Promise.all([
+  const oauthConfigured = isLinkedInOAuthConfigured();
+  const linkedInConnection = oauthConfigured
+    ? await getLinkedInConnection(profile.id)
+    : null;
+
+  const [runsRes, conflictsRes, readiness, awaitingRun] = await Promise.all([
     supabase
       .from("ingestion_runs")
       .select("*")
@@ -27,10 +38,26 @@ export default async function ProfileImportPage() {
       .select("*")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false }),
+    getTailoringReadiness(profile.id),
+    getAwaitingConfirmRun(profile.id),
   ]);
 
   const runs = (runsRes.data ?? []) as IngestionRun[];
   const conflicts = (conflictsRes.data ?? []) as DedupConflict[];
+
+  const conflictsWithExisting: DedupConflictWithExisting[] = await Promise.all(
+    conflicts.map(async (conflict) => {
+      const { data } = await supabase
+        .from(conflict.section)
+        .select("*")
+        .eq("id", conflict.existing_id)
+        .maybeSingle();
+      return {
+        ...conflict,
+        existing_data: (data as Record<string, unknown> | null) ?? null,
+      };
+    })
+  );
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -38,7 +65,7 @@ export default async function ProfileImportPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Import data</h1>
           <p className="text-muted-foreground">
-            Upload a resume, paste LinkedIn JSON, and resolve duplicates.
+            Upload a resume, connect LinkedIn, or paste JSON export.
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -46,8 +73,21 @@ export default async function ProfileImportPage() {
         </Button>
       </div>
 
+      <ProfileReadinessBanner ready={readiness.ready} blockers={readiness.blockers} />
+
+      {awaitingRun?.preview_summary && (
+        <ImportPreviewPanel
+          runId={awaitingRun.id}
+          preview={awaitingRun.preview_summary}
+          source={awaitingRun.source}
+        />
+      )}
+
       <ResumeUpload />
-      <LinkedInImport />
+      <LinkedInImport
+        oauthConfigured={oauthConfigured}
+        linkedInConnected={Boolean(linkedInConnection)}
+      />
 
       <Card>
         <CardHeader>
@@ -57,7 +97,7 @@ export default async function ProfileImportPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DedupConflictsPanel conflicts={conflicts} />
+          <DedupConflictsPanel conflicts={conflictsWithExisting} />
         </CardContent>
       </Card>
 

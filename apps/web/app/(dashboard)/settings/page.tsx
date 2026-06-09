@@ -1,14 +1,17 @@
 import { ExtensionTokens } from "@/components/settings/extension-tokens";
 import { DeveloperToolsCard } from "@/components/settings/developer-tools-card";
+import { WeeklyGoalCard } from "@/components/settings/weekly-goal-card";
 import { listExtensionTokens } from "@/lib/extension/actions";
 import { getDevDataSummary, isDevDataResetAvailable } from "@/lib/dev/actions";
+import { getProfileForUser } from "@/lib/profile/get-profile";
 import { EMPTY_DEV_DATA_SUMMARY } from "@/lib/dev/reset-helpers";
 
 export default async function SettingsPage() {
-  const [tokens, devReset, devSummary] = await Promise.all([
+  const [tokens, devReset, devSummary, profile] = await Promise.all([
     listExtensionTokens(),
     isDevDataResetAvailable(),
     getDevDataSummary(),
+    getProfileForUser(),
   ]);
 
   return (
@@ -22,6 +25,7 @@ export default async function SettingsPage() {
           <code className="font-mono text-xs bg-muted px-1 rounded">docs/setup/auth-google-oauth.md</code>.
         </p>
       </div>
+      <WeeklyGoalCard initialGoal={profile?.weekly_application_goal ?? 5} />
       <ExtensionTokens tokens={tokens} />
       {devReset ? (
         <DeveloperToolsCard summary={devSummary ?? EMPTY_DEV_DATA_SUMMARY} />

@@ -8,6 +8,43 @@ export type JobType = "full_time" | "internship" | "contract";
 
 export type RoleSeason = "spring" | "summer" | "fall" | "winter";
 
+/** How an application was captured into the pipeline. */
+export type CaptureSource = "extension" | "web";
+
+export type CaptureScrapeConfidence = "high" | "medium" | "low";
+
+/**
+ * Structured job capture draft — shared contract for web preview, extension preview/save APIs.
+ * Built server-side via `buildCapturePreview`; extension mirrors this shape client-side.
+ */
+export interface CaptureDraft {
+  title: string;
+  company: string;
+  url?: string;
+  description_raw: string;
+  job_type: JobType | null;
+  role_season: RoleSeason | null;
+  role_year: number | null;
+  locations: string[];
+  tech_stack: string[];
+  required_qualifications: string[];
+  preferred_qualifications: string[];
+  salary_range: string | null;
+  priority: number | null;
+  scrape_source?: string;
+  confidence?: CaptureScrapeConfidence;
+  degraded?: boolean;
+  warning?: string;
+}
+
+export interface CaptureDraftSaveOptions {
+  skip_ai_parse?: boolean;
+  priority?: number | null;
+  needs_review?: boolean;
+  capture_source?: CaptureSource;
+  createApplication?: boolean;
+}
+
 export const ROLE_SEASONS: readonly RoleSeason[] = [
   "spring",
   "summer",
@@ -51,6 +88,8 @@ export interface Profile {
   source: ProfileSource;
   target_roles: string[];
   technical_skills_tex: string | null;
+  /** User-set weekly application target for velocity widget (default 5). */
+  weekly_application_goal: number;
   created_at: string;
   updated_at: string;
 }
@@ -180,6 +219,31 @@ export interface Application {
   notes: string[];
   priority: number | null;
   referral_contact: string | null;
+  /** True when saved via quick capture and awaiting web review. */
+  needs_review: boolean;
+  /** Origin of capture; null for rows created before capture tracking. */
+  capture_source: CaptureSource | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TailoredResume {
+  id: string;
+  application_id: string;
+  job_id: string | null;
+  user_id: string | null;
+  content: Record<string, unknown>;
+  pdf_storage_path: string | null;
+  template_used: string | null;
+  label: string | null;
+  ats_score: number | null;
+  match_summary: Record<string, unknown> | null;
+  keyword_gaps: string[];
+  generated_at: string;
+  version: number;
+  user_edited_at: string | null;
+  latex_source: string | null;
+  latex_edited_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -232,6 +296,27 @@ export interface PreviewSummary {
   profileHeader?: PreviewProfileHeader;
 }
 
+export type OverviewActionKind =
+  | "tailor_resume"
+  | "keyword_gaps"
+  | "export_pdf"
+  | "generate_questions"
+  | "practice_interview"
+  | "profile_blocker"
+  | "import_conflicts"
+  | "apply_saved"
+  | "skill_nudge"
+  | "capture_review";
+
+export interface OverviewAction {
+  kind: OverviewActionKind;
+  priority: number;
+  title: string;
+  subtitle: string;
+  href: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface IngestionRun {
   id: string;
   profile_id: string;
@@ -261,6 +346,16 @@ export interface DedupConflict {
   incoming_data: Record<string, unknown>;
   source: ProfileSource;
   resolution: DedupResolution;
+  created_at: string;
+  updated_at: string;
+}
+
+/** LinkedIn OAuth connection metadata (tokens stored encrypted server-side). */
+export interface LinkedInConnection {
+  id: string;
+  profile_id: string;
+  linkedin_member_id: string;
+  expires_at: string;
   created_at: string;
   updated_at: string;
 }
@@ -366,6 +461,27 @@ export interface Database {
       >;
       jobs: TableDef<Job>;
       applications: TableDef<Application>;
+      tailored_resumes: TableDef<
+        TailoredResume,
+        Omit<TailoredResume, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        }
+      >;
+      linkedin_connections: TableDef<
+        LinkedInConnection & {
+          access_token_enc: string;
+          refresh_token_enc: string | null;
+        },
+        {
+          profile_id: string;
+          linkedin_member_id: string;
+          access_token_enc: string;
+          refresh_token_enc?: string | null;
+          expires_at: string;
+        }
+      >;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

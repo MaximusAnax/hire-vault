@@ -37,4 +37,18 @@ describe("dedup", () => {
     const outcome = resolveDedup("leadership", incoming, [{ id: "l-1", source_hash: hash }]);
     expect(outcome.action).toBe("conflict");
   });
+
+  it("computeSourceHash normalizes partial start dates", () => {
+    const partial = computeSourceHash("experiences", {
+      company: "Acme",
+      title: "Engineer",
+      start_date: "2020-01",
+    });
+    const full = computeSourceHash("experiences", {
+      company: "Acme",
+      title: "Engineer",
+      start_date: "2020-01-01",
+    });
+    expect(partial).toBe(full);
+  });
 });
