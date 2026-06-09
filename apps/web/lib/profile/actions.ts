@@ -8,6 +8,12 @@ import * as projects from "./actions/projects";
 import * as skills from "./actions/skills";
 import * as courses from "./actions/courses";
 
+import * as preferences from "./actions/preferences";
+
+export async function updateWeeklyApplicationGoal(goal: number) {
+  return preferences.updateWeeklyApplicationGoal(goal);
+}
+
 export async function updateProfile(formData: FormData) {
   return header.updateProfile(formData);
 }
