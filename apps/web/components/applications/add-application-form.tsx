@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   createApplication,
   parseAndPreviewJob,
@@ -20,20 +20,24 @@ type Banner =
   | { kind: "error"; message: string }
   | null;
 
-export function AddApplicationForm() {
+export function AddApplicationForm({ initialAddUrl }: { initialAddUrl?: string }) {
   const [pending, startTransition] = useTransition();
   const [smartInput, setSmartInput] = useState("");
   const [preview, setPreview] = useState<ParseAndPreviewJobResult | null>(null);
   const [banner, setBanner] = useState<Banner>(null);
+  const [fromExtension, setFromExtension] = useState(false);
+  const addUrlHandled = useRef(false);
 
   // Manual form priority is uncontrolled-ish but we mirror into hidden input via StarRating's `name`.
   const [manualPriority, setManualPriority] = useState<number | null>(null);
 
-  const handleSmartSubmit = () => {
+  const handleSmartSubmit = (input?: string) => {
+    const value = (input ?? smartInput).trim();
+    if (!value) return;
     setBanner(null);
     setPreview(null);
     startTransition(async () => {
-      const result = await parseAndPreviewJob(smartInput);
+      const result = await parseAndPreviewJob(value);
       if ("error" in result) {
         setBanner({ kind: "error", message: result.error });
         return;
@@ -45,6 +49,18 @@ export function AddApplicationForm() {
       setPreview(result as ParseAndPreviewJobResult);
     });
   };
+
+  useEffect(() => {
+    const url = initialAddUrl?.trim();
+    if (!url || addUrlHandled.current) return;
+    addUrlHandled.current = true;
+    setFromExtension(true);
+    setSmartInput(url);
+    document.getElementById("add")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const t = window.setTimeout(() => handleSmartSubmit(url), 300);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once for extension deep link
+  }, [initialAddUrl]);
 
   return (
     <Card>
@@ -72,6 +88,11 @@ export function AddApplicationForm() {
             </TabsList>
 
             <TabsContent value="smart" className="space-y-3">
+              {fromExtension ? (
+                <p className="text-xs text-primary/90">
+                  Opened from extension — review all fields before saving.
+                </p>
+              ) : null}
               <div className="space-y-2">
                 <Label>Paste a job URL or the JD text</Label>
                 <Textarea
@@ -100,7 +121,7 @@ export function AddApplicationForm() {
               {banner?.kind === "error" ? (
                 <p className="text-xs text-destructive">{banner.message}</p>
               ) : null}
-              <Button onClick={handleSmartSubmit} disabled={pending || !smartInput.trim()}>
+              <Button onClick={() => handleSmartSubmit()} disabled={pending || !smartInput.trim()}>
                 {pending ? "Parsing…" : "Preview"}
               </Button>
             </TabsContent>

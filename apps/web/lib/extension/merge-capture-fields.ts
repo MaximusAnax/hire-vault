@@ -15,6 +15,53 @@ export interface ExtensionJobInput {
   locations?: string[];
   url?: string;
   description?: string;
+  confidence?: "high" | "medium" | "low";
+}
+
+const DOM_TITLE_CHROME_PATTERNS = [
+  /job application for/i,
+  /^apply for\b/i,
+  /^careers at\b/i,
+  /\|\s*linkedin$/i,
+];
+
+function isDomTitleChrome(title: string): boolean {
+  const t = title.trim();
+  if (!t) return false;
+  return DOM_TITLE_CHROME_PATTERNS.some((re) => re.test(t));
+}
+
+function preferMoreSpecificTitle(a: string, b: string): string {
+  const al = a.toLowerCase();
+  const bl = b.toLowerCase();
+  if (al.includes(bl) && a.length > b.length) return a;
+  if (bl.includes(al) && b.length > a.length) return b;
+  return a.length >= b.length ? a : b;
+}
+
+function pickMergedTitle(
+  clientTitle: string,
+  parsedTitle: string,
+  confidence?: ExtensionJobInput["confidence"]
+): string {
+  const client = clientTitle.trim();
+  const parsed = parsedTitle.trim();
+  const domIsChrome = isDomTitleChrome(client);
+  const lowConfidence = confidence === "low";
+
+  if ((domIsChrome || lowConfidence) && parsed.length >= 3) {
+    return parsed;
+  }
+
+  if (client.length < 3) {
+    return parsed.length >= 3 ? parsed : client || "Untitled role";
+  }
+
+  if (parsed.length < 3) {
+    return client;
+  }
+
+  return preferMoreSpecificTitle(client, parsed);
 }
 
 export function mergeExtensionCaptureFields(
@@ -26,12 +73,7 @@ export function mergeExtensionCaptureFields(
   const parsedTitle = (parsed?.title ?? "").trim();
   const parsedCompany = (parsed?.company ?? "").trim();
 
-  let title =
-    clientTitle.length >= 3
-      ? clientTitle
-      : parsedTitle.length >= 3
-        ? parsedTitle
-        : clientTitle || "Untitled role";
+  let title = pickMergedTitle(clientTitle, parsedTitle, job.confidence);
 
   let company =
     clientCompany && !WEAK_COMPANIES.has(clientCompany.toLowerCase())
@@ -47,7 +89,11 @@ export function mergeExtensionCaptureFields(
       ? normalized.company
       : company;
 
-  const timing = resolveRoleTiming({ title });
+  const timing = resolveRoleTiming({
+    title,
+    role_season: parsed?.role_season,
+    role_year: parsed?.role_year,
+  });
   title = timing.title;
 
   let job_type: JobType | null = parsed?.job_type ?? null;

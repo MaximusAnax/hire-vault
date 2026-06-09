@@ -7,7 +7,7 @@
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/index.html",
-    "default_title": "HireVault"
+    "default_title": "HireVault — capture job"
   },
   "background": {
     "service_worker": "background/service-worker.js",

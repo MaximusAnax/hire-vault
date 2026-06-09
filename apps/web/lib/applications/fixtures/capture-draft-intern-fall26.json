@@ -1,0 +1,20 @@
+{
+  "title": "Software Engineering Intern",
+  "company": "Gemini",
+  "url": "https://boards.greenhouse.io/gemini/jobs/4829103",
+  "description_raw": "Software Engineering Intern (Fall 2026)\n\nGemini is a global crypto exchange and custodian. We are looking for interns to join our engineering team for Fall 2026.\n\nResponsibilities:\n- Build features for our trading platform\n- Collaborate with product and design\n\nRequirements:\n- Currently pursuing a BS or MS in Computer Science or related field\n- Strong programming skills in Python or TypeScript\n\nPreferred:\n- Experience with distributed systems\n\nCompensation: $45–55/hr. Locations: New York, NY; Remote (US).",
+  "job_type": "internship",
+  "role_season": "fall",
+  "role_year": 2026,
+  "locations": ["New York, NY", "Remote"],
+  "tech_stack": ["Python", "TypeScript"],
+  "required_qualifications": [
+    "Currently pursuing a BS or MS in Computer Science or related field",
+    "Strong programming skills in Python or TypeScript"
+  ],
+  "preferred_qualifications": ["Experience with distributed systems"],
+  "salary_range": "$45–55/hr",
+  "priority": null,
+  "scrape_source": "greenhouse",
+  "confidence": "high"
+}

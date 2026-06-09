@@ -1,6 +1,6 @@
-import { parseJobDescription, type ParsedJobDescription } from "@hirevault/ai-core";
+import type { ParsedJobDescription } from "@hirevault/ai-core";
+import { buildCapturePreview, type CaptureDraft } from "./capture-preview";
 import { fetchJobFromUrl, isLikelyUrl } from "./scrape";
-import { normalizeLocations } from "./locations";
 
 export interface ParseAndPreviewJobResult {
   description_raw: string;
@@ -11,6 +11,8 @@ export interface ParseAndPreviewJobResult {
   locations: string[];
   degraded?: boolean;
   warning?: string;
+  /** Profile-fit hint from deriveCaptureFitHint (display-only). */
+  fit_hint?: string;
 }
 
 export interface ParseAndPreviewJobBlocked {
@@ -24,6 +26,25 @@ export interface ParseAndPreviewJobError {
   error: string;
 }
 
+function toPreviewParsed(
+  draft: CaptureDraft,
+  parsed: ParsedJobDescription | null
+): ParsedJobDescription {
+  return {
+    ...parsed,
+    title: draft.title,
+    company: draft.company,
+    job_type: draft.job_type,
+    role_season: draft.role_season,
+    role_year: draft.role_year,
+    locations: draft.locations,
+    tech_stack: draft.tech_stack,
+    required_qualifications: draft.required_qualifications,
+    preferred_qualifications: draft.preferred_qualifications,
+    salary_range: draft.salary_range,
+  };
+}
+
 export async function runParseAndPreviewJob(
   input: string
 ): Promise<ParseAndPreviewJobResult | ParseAndPreviewJobBlocked | ParseAndPreviewJobError> {
@@ -34,9 +55,9 @@ export async function runParseAndPreviewJob(
   let source: "url" | "text" = "text";
   let url: string | undefined;
   let scrapeSource: ParseAndPreviewJobResult["scrapeSource"];
-  let scrapedTitle: string | null = null;
-  let scrapedCompany: string | null = null;
-  let scrapedLocation: string | null = null;
+  let scrapedTitle: string | undefined;
+  let scrapedCompany: string | undefined;
+  let scrapedLocation: string | undefined;
 
   if (isLikelyUrl(trimmed)) {
     source = "url";
@@ -52,41 +73,36 @@ export async function runParseAndPreviewJob(
     }
     descriptionText = scraped.text;
     scrapeSource = scraped.source;
-    scrapedTitle = scraped.title;
-    scrapedCompany = scraped.company;
-    scrapedLocation = scraped.location;
+    scrapedTitle = scraped.title ?? undefined;
+    scrapedCompany = scraped.company ?? undefined;
+    scrapedLocation = scraped.location ?? undefined;
   } else {
     descriptionText = trimmed;
   }
 
-  if (descriptionText.length < 60) {
-    return { error: "That looks too short to parse — paste the full JD or a longer link." };
+  const preview = await buildCapturePreview({
+    description: descriptionText,
+    url,
+    scrapedTitle,
+    scrapedCompany,
+    scrapedLocation,
+    scrapeSource,
+  });
+
+  if ("error" in preview) {
+    return { error: preview.error };
   }
 
-  const ai = await parseJobDescription(descriptionText);
-  const parsed: ParsedJobDescription = ai.data ?? {};
-
-  if (!parsed.title && scrapedTitle) parsed.title = scrapedTitle;
-  if (!parsed.company && scrapedCompany) parsed.company = scrapedCompany;
-  if (!parsed.location && scrapedLocation) parsed.location = scrapedLocation;
-
-  const aiLocations = normalizeLocations(parsed.locations);
-  const scrapedLocations = normalizeLocations(scrapedLocation);
-  const legacyLocations = normalizeLocations(parsed.location);
-  const locations = aiLocations.length
-    ? aiLocations
-    : scrapedLocations.length
-      ? scrapedLocations
-      : legacyLocations;
+  const { draft, parsed } = preview;
 
   return {
-    description_raw: descriptionText,
+    description_raw: draft.description_raw,
     source,
     url,
     scrapeSource,
-    parsed,
-    locations,
-    degraded: ai.degraded,
-    warning: ai.error,
+    parsed: toPreviewParsed(draft, parsed),
+    locations: draft.locations,
+    degraded: draft.degraded,
+    warning: draft.warning,
   };
 }

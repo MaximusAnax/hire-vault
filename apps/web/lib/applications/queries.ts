@@ -17,6 +17,8 @@ export interface ApplicationFilters {
   activeOnly?: boolean;
   /** Any job location chip contains "remote" (case-insensitive). */
   remoteOnly?: boolean;
+  /** Extension quick-captures flagged for web polish (`needs_review`). */
+  needsReview?: boolean;
   sort?: "updated" | "applied" | "priority" | "company" | "role_timing";
 }
 
@@ -52,10 +54,10 @@ export async function getApplicationsWithJobs(
   const { data, error } = await query;
   if (error || !data) return [];
 
-  let results = data.map((row) => ({
-    ...(row as Omit<ApplicationWithJob, "job">),
-    job: (row as { job: ApplicationWithJob["job"] }).job ?? null,
-  })) as ApplicationWithJob[];
+  let results = (data ?? []).map((row) => ({
+    ...(row as ApplicationWithJob),
+    job: (row as ApplicationWithJob).job ?? null,
+  }));
 
   if (filters.priorityMin != null && filters.priorityMin > 0) {
     results = results.filter((a) => (a.priority ?? 0) >= filters.priorityMin!);
@@ -97,6 +99,10 @@ export async function getApplicationsWithJobs(
     );
   }
 
+  if (filters.needsReview) {
+    results = results.filter((a) => a.needs_review);
+  }
+
   const sort = filters.sort ?? "updated";
   results.sort((a, b) => {
     if (sort === "company") {
@@ -118,6 +124,11 @@ export async function getApplicationsWithJobs(
   });
 
   return results;
+}
+
+export async function countNeedsReviewApplications(): Promise<number> {
+  const apps = await getApplicationsWithJobs();
+  return apps.filter((a) => a.needs_review).length;
 }
 
 export async function getApplicationStats() {

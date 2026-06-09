@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 
 const COHORT_YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
 
-export function ApplicationFilters() {
+interface ApplicationFiltersProps {
+  needsReviewCount?: number;
+}
+
+export function ApplicationFilters({ needsReviewCount = 0 }: ApplicationFiltersProps) {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -39,7 +43,8 @@ export function ApplicationFilters() {
     params.get("roleYear") ||
     params.get("location") ||
     params.get("active") === "1" ||
-    params.get("remote") === "1";
+    params.get("remote") === "1" ||
+    params.get("needsReview") === "1";
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-3">
@@ -212,6 +217,20 @@ export function ApplicationFilters() {
             onChange={() => toggle("remote")}
           />
           Remote-friendly
+        </label>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            className="rounded border-border"
+            checked={params.get("needsReview") === "1"}
+            onChange={() => toggle("needsReview")}
+          />
+          Needs review
+          {needsReviewCount > 0 ? (
+            <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-300">
+              {needsReviewCount}
+            </span>
+          ) : null}
         </label>
       </div>
     </div>

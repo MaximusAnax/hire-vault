@@ -1,3 +1,7 @@
+import type { CaptureDraft, CaptureScrapeConfidence, JobType, RoleSeason } from "@hirevault/types";
+
+export type { CaptureDraft, CaptureScrapeConfidence, JobType, RoleSeason };
+
 export type ScrapeSource =
   | "linkedin"
   | "greenhouse"
@@ -16,13 +20,36 @@ export interface ScrapedJob {
   url: string;
   description: string;
   source: ScrapeSource | string;
-  confidence: "high" | "medium" | "low";
+  confidence: CaptureScrapeConfidence;
   locations?: string[];
 }
 
 export interface CapturePayload {
   job: ScrapedJob;
   createApplication?: boolean;
+}
+
+export interface SyncJobPayload {
+  draft: CaptureDraft;
+  skip_ai_parse: true;
+  createApplication?: boolean;
+  needs_review?: boolean;
+}
+
+export interface PreviewJobResult {
+  draft?: CaptureDraft;
+  degraded?: boolean;
+  warning?: string | null;
+  usedFixture?: boolean;
+  error?: string;
+}
+
+export interface SyncJobResult {
+  ok?: boolean;
+  error?: string;
+  jobId?: string;
+  applicationId?: string;
+  deduped?: boolean;
 }
 
 export interface LastSyncMeta {
