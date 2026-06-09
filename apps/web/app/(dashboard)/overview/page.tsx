@@ -1,25 +1,56 @@
 import Link from "next/link";
-import { getApplicationStats, getApplicationsWithJobs } from "@/lib/applications/queries";
+import { getApplicationStats } from "@/lib/applications/queries";
+import { getOverviewDashboard } from "@/lib/overview/queries";
 import { resumeBuilderUrl } from "@/lib/resumes/urls";
+import { ActionQueue } from "@/components/overview/action-queue";
+import { ImportHealthBadge } from "@/components/overview/import-health-badge";
+import { WeeklyVelocity } from "@/components/overview/weekly-velocity";
+import { ProfileReadinessBanner } from "@/components/profile/profile-readiness-banner";
 import { PipelineAnalytics } from "@/components/applications/pipeline-analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default async function OverviewPage() {
-  const [stats, recent] = await Promise.all([
-    getApplicationStats(),
-    getApplicationsWithJobs({ sort: "updated" }),
-  ]);
+  const [dashboard, stats] = await Promise.all([getOverviewDashboard(), getApplicationStats()]);
 
-  const recentFive = recent.slice(0, 5);
+  if (!dashboard) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+        <p className="text-muted-foreground text-sm">Sign in to see your command center.</p>
+      </div>
+    );
+  }
+
+  const recentFive = dashboard.apps.slice(0, 5);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
-        <p className="text-muted-foreground">
-          Pipeline health and quick links to capture jobs, tailor resumes, and prep interviews.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+          <p className="text-muted-foreground">
+            Prioritized next steps across your pipeline, profile, and prep.
+          </p>
+        </div>
+        <ImportHealthBadge count={dashboard.pendingConflictsCount} />
+      </div>
+
+      <ActionQueue actions={dashboard.actions} />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <WeeklyVelocity
+          appliedThisWeek={dashboard.appliedThisWeek}
+          goal={dashboard.weeklyApplicationGoal}
+        />
+        {!dashboard.readinessReady ? (
+          <div className="sm:col-span-2">
+            <ProfileReadinessBanner
+              ready={dashboard.readinessReady}
+              blockers={dashboard.readinessBlockers}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -73,7 +104,12 @@ export default async function OverviewPage() {
         </CardHeader>
         <CardContent>
           {recentFive.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No applications yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No applications yet.{" "}
+              <Link href="/applications" className="text-primary hover:underline">
+                Capture your first role
+              </Link>
+            </p>
           ) : (
             <ul className="text-sm space-y-2">
               {recentFive.map((a) => (
@@ -98,49 +134,6 @@ export default async function OverviewPage() {
           )}
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Applications</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button size="sm" asChild>
-              <Link href="/applications">Capture & track jobs</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Resumes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/resumes">Tailor & export PDF</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Interview prep</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/interviews">Practice questions</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Profile</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/profile">Edit master data</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

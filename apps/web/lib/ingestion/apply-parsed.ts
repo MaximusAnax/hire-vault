@@ -1,106 +1,207 @@
 import type { ParsedResume, LinkedInImport } from "@hirevault/ai-core";
-import type { ProfileSource, ProfileSection } from "@hirevault/types";
-import { computeSourceHash, mergeRecords, type ExistingRow } from "./dedup";
+import type {
+  MergeStrategy,
+  ProfileSection,
+  ProfileSource,
+  SectionUpsertPlan,
+} from "@hirevault/types";
+import { planSectionUpsert, type MergeExistingRow } from "./merge-core";
+import { sanitizeReviewedPlans } from "./plan-review";
 
-type ApplyStats = {
+export type ApplyStats = {
   inserted: number;
   merged: number;
   skipped: number;
   conflicts: { section: ProfileSection; existingId: string; incoming: Record<string, unknown> }[];
 };
 
-const BULLET_SECTIONS = new Set<ProfileSection>(["experiences", "leadership"]);
+export interface ApplyParsedOptions {
+  mergeStrategy?: MergeStrategy;
+}
 
-async function upsertSection(
+const PROFILE_HEADER_FIELDS = [
+  "headline",
+  "full_name",
+  "email",
+  "location",
+  "linkedin_url",
+  "github_url",
+  "portfolio_url",
+  "phone",
+] as const;
+
+const IMPORT_SOURCES = new Set<ProfileSource>(["resume_upload", "linkedin"]);
+
+function isEmptyValue(value: unknown): boolean {
+  return value == null || value === "";
+}
+
+/** Only overwrite empty fields or fields on import-sourced profiles; never clobber manual edits. */
+export function buildProfileHeaderUpdate(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>,
+  source: ProfileSource
+): Record<string, unknown> {
+  const importSourcedProfile = IMPORT_SOURCES.has(existing.source as ProfileSource);
+  const update: Record<string, unknown> = {
+    raw_resume_data: incoming.raw_resume_data,
+    source,
+  };
+
+  for (const field of PROFILE_HEADER_FIELDS) {
+    const existingVal = existing[field];
+    const incomingVal = incoming[field];
+    if (isEmptyValue(incomingVal)) continue;
+
+    if (isEmptyValue(existingVal) || importSourcedProfile) {
+      update[field] = incomingVal;
+    }
+  }
+
+  return update;
+}
+
+async function executeSectionPlans(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   profileId: string,
   section: ProfileSection,
-  items: Record<string, unknown>[],
-  source: ProfileSource,
-  existing: ExistingRow[]
+  plans: ReturnType<typeof planSectionUpsert>,
+  source: ProfileSource
 ): Promise<ApplyStats> {
   const stats: ApplyStats = { inserted: 0, merged: 0, skipped: 0, conflicts: [] };
   const table = section;
 
-  for (const item of items) {
-    const hash = computeSourceHash(section, item);
-    const match = existing.find((r) => r.source_hash === hash);
-
-    if (!match) {
-      const row = prepareRow(section, item);
+  for (const plan of plans) {
+    if (plan.action === "insert") {
+      const { source_hash: sourceHash, ...row } = plan.incoming;
       const { error } = await supabase.from(table).insert({
         profile_id: profileId,
         ...row,
         source,
-        source_hash: hash,
+        source_hash: sourceHash,
       });
       if (!error) stats.inserted++;
       else stats.skipped++;
       continue;
     }
 
-    const { data: row } = await supabase.from(table).select("*").eq("id", match.id).single();
-    if (!row) {
+    if (plan.action === "update" && plan.existingId && plan.merged) {
+      const { error } = await supabase
+        .from(table)
+        .update({ ...plan.merged, source })
+        .eq("id", plan.existingId);
+      if (!error) stats.merged++;
+      else stats.skipped++;
+      continue;
+    }
+
+    if (plan.action === "conflict" && plan.existingId) {
+      stats.conflicts.push({
+        section,
+        existingId: plan.existingId,
+        incoming: plan.incoming,
+      });
       stats.skipped++;
       continue;
     }
 
-    const merged = mergeRecords(row as Record<string, unknown>, prepareRow(section, item));
-    const hasSubstantiveDiff =
-      BULLET_SECTIONS.has(section) &&
-      JSON.stringify((row as { bullet_points?: string[] }).bullet_points ?? []) !==
-        JSON.stringify((item.bullet_points as string[]) ?? []);
-
-    if (hasSubstantiveDiff) {
-      stats.conflicts.push({ section, existingId: match.id, incoming: item });
+    if (plan.action === "skip") {
       stats.skipped++;
-      continue;
     }
-
-    const { error } = await supabase
-      .from(table)
-      .update({ ...merged, source })
-      .eq("id", match.id);
-    if (!error) stats.merged++;
-    else stats.skipped++;
   }
 
   return stats;
-}
-
-function prepareRow(section: ProfileSection, item: Record<string, unknown>): Record<string, unknown> {
-  if (section === "skills") {
-    return {
-      ...item,
-      category: item.category ?? "tool",
-    };
-  }
-  if (section === "experiences" || section === "leadership") {
-    return {
-      ...item,
-      bullet_points: item.bullet_points ?? [],
-      is_current: item.is_current ?? false,
-    };
-  }
-  if (section === "education") {
-    return {
-      ...item,
-      relevant_courses: item.relevant_courses ?? [],
-    };
-  }
-  return item;
 }
 
 function isParsedResume(parsed: ParsedResume | LinkedInImport): parsed is ParsedResume {
   return "leadership" in parsed || "full_name" in parsed || "courses" in parsed;
 }
 
-export async function applyParsedProfile(
+async function applyProfileHeader(
   supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
   profileId: string,
   parsed: ParsedResume | LinkedInImport,
   source: ProfileSource
+): Promise<boolean> {
+  const resume = isParsedResume(parsed) ? parsed : null;
+
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", profileId)
+    .single();
+
+  const incomingHeader: Record<string, unknown> = {
+    headline: parsed.headline ?? resume?.full_name ?? null,
+    full_name: resume?.full_name ?? parsed.headline ?? null,
+    email: resume?.email ?? null,
+    location: parsed.location ?? null,
+    linkedin_url: parsed.linkedin_url ?? null,
+    github_url: resume?.github_url ?? null,
+    portfolio_url: resume?.portfolio_url ?? null,
+    phone: resume?.phone ?? null,
+    raw_resume_data: parsed as unknown as Record<string, unknown>,
+  };
+
+  const profileFields = buildProfileHeaderUpdate(
+    (existingProfile ?? { source: "manual" }) as Record<string, unknown>,
+    incomingHeader,
+    source
+  );
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update(profileFields)
+    .eq("id", profileId);
+
+  return !profileError;
+}
+
+export async function applyReviewedPlans(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  profileId: string,
+  parsed: ParsedResume | LinkedInImport,
+  source: ProfileSource,
+  reviewedPlans: SectionUpsertPlan[]
 ): Promise<ApplyStats & { profileUpdated: boolean }> {
+  const totals: ApplyStats & { profileUpdated: boolean } = {
+    inserted: 0,
+    merged: 0,
+    skipped: 0,
+    conflicts: [],
+    profileUpdated: false,
+  };
+
+  totals.profileUpdated = await applyProfileHeader(supabase, profileId, parsed, source);
+
+  const plans = sanitizeReviewedPlans(reviewedPlans);
+  const bySection = new Map<ProfileSection, SectionUpsertPlan[]>();
+
+  for (const plan of plans) {
+    const sectionPlans = bySection.get(plan.section) ?? [];
+    sectionPlans.push(plan);
+    bySection.set(plan.section, sectionPlans);
+  }
+
+  for (const [section, sectionPlans] of bySection) {
+    const result = await executeSectionPlans(supabase, profileId, section, sectionPlans, source);
+    totals.inserted += result.inserted;
+    totals.merged += result.merged;
+    totals.skipped += result.skipped;
+    totals.conflicts.push(...result.conflicts);
+  }
+
+  return totals;
+}
+
+export async function applyParsedProfile(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  profileId: string,
+  parsed: ParsedResume | LinkedInImport,
+  source: ProfileSource,
+  options?: ApplyParsedOptions
+): Promise<ApplyStats & { profileUpdated: boolean }> {
+  const strategy = options?.mergeStrategy ?? "newest_wins";
   const totals: ApplyStats & { profileUpdated: boolean } = {
     inserted: 0,
     merged: 0,
@@ -111,32 +212,15 @@ export async function applyParsedProfile(
 
   const resume = isParsedResume(parsed) ? parsed : null;
 
-  const profileFields: Record<string, unknown> = {
-    headline: parsed.headline ?? resume?.full_name ?? null,
-    full_name: resume?.full_name ?? parsed.headline ?? null,
-    email: resume?.email ?? null,
-    location: parsed.location ?? null,
-    linkedin_url: parsed.linkedin_url ?? null,
-    github_url: resume?.github_url ?? null,
-    portfolio_url: resume?.portfolio_url ?? null,
-    phone: resume?.phone ?? null,
-    source,
-    raw_resume_data: parsed as unknown as Record<string, unknown>,
-  };
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update(profileFields)
-    .eq("id", profileId);
-  totals.profileUpdated = !profileError;
+  totals.profileUpdated = await applyProfileHeader(supabase, profileId, parsed, source);
 
   const [exp, edu, proj, skills, courses, leadership] = await Promise.all([
-    supabase.from("experiences").select("id, source_hash").eq("profile_id", profileId),
-    supabase.from("education").select("id, source_hash").eq("profile_id", profileId),
-    supabase.from("projects").select("id, source_hash").eq("profile_id", profileId),
-    supabase.from("skills").select("id, source_hash").eq("profile_id", profileId),
-    supabase.from("courses").select("id, source_hash").eq("profile_id", profileId),
-    supabase.from("leadership").select("id, source_hash").eq("profile_id", profileId),
+    supabase.from("experiences").select("*").eq("profile_id", profileId),
+    supabase.from("education").select("*").eq("profile_id", profileId),
+    supabase.from("projects").select("*").eq("profile_id", profileId),
+    supabase.from("skills").select("*").eq("profile_id", profileId),
+    supabase.from("courses").select("*").eq("profile_id", profileId),
+    supabase.from("leadership").select("*").eq("profile_id", profileId),
   ]);
 
   const sections: { section: ProfileSection; items: Record<string, unknown>[] | undefined }[] = [
@@ -151,25 +235,19 @@ export async function applyParsedProfile(
     },
   ];
 
-  const existingMap: Record<ProfileSection, ExistingRow[]> = {
-    experiences: (exp.data ?? []) as ExistingRow[],
-    education: (edu.data ?? []) as ExistingRow[],
-    projects: (proj.data ?? []) as ExistingRow[],
-    skills: (skills.data ?? []) as ExistingRow[],
-    courses: (courses.data ?? []) as ExistingRow[],
-    leadership: (leadership.data ?? []) as ExistingRow[],
+  const existingMap: Record<ProfileSection, MergeExistingRow[]> = {
+    experiences: (exp.data ?? []) as MergeExistingRow[],
+    education: (edu.data ?? []) as MergeExistingRow[],
+    projects: (proj.data ?? []) as MergeExistingRow[],
+    skills: (skills.data ?? []) as MergeExistingRow[],
+    courses: (courses.data ?? []) as MergeExistingRow[],
+    leadership: (leadership.data ?? []) as MergeExistingRow[],
   };
 
   for (const { section, items } of sections) {
     if (!items?.length) continue;
-    const result = await upsertSection(
-      supabase,
-      profileId,
-      section,
-      items,
-      source,
-      existingMap[section]
-    );
+    const plans = planSectionUpsert(section, items, existingMap[section], strategy);
+    const result = await executeSectionPlans(supabase, profileId, section, plans, source);
     totals.inserted += result.inserted;
     totals.merged += result.merged;
     totals.skipped += result.skipped;
@@ -177,4 +255,37 @@ export async function applyParsedProfile(
   }
 
   return totals;
+}
+
+/** Skip insert when a pending conflict already exists for the same profile row. */
+export async function queueDedupConflicts(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  profileId: string,
+  conflicts: ApplyStats["conflicts"],
+  source: ProfileSource
+): Promise<number> {
+  let queued = 0;
+
+  for (const conflict of conflicts) {
+    const { data: pending } = await supabase
+      .from("dedup_conflicts")
+      .select("id")
+      .eq("profile_id", profileId)
+      .eq("existing_id", conflict.existingId)
+      .eq("resolution", "pending")
+      .maybeSingle();
+
+    if (pending) continue;
+
+    const { error } = await supabase.from("dedup_conflicts").insert({
+      profile_id: profileId,
+      section: conflict.section,
+      existing_id: conflict.existingId,
+      incoming_data: conflict.incoming,
+      source,
+    });
+    if (!error) queued++;
+  }
+
+  return queued;
 }
