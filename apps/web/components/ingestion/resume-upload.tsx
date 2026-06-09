@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Upload } from "lucide-react";
-import { uploadAndParseResume } from "@/lib/ingestion/actions";
+import { uploadAndParseResume, fetchTailoringReadiness } from "@/lib/ingestion/actions";
 import type { ImportSectionCounts } from "@/lib/ingestion/normalize-parsed-resume";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,10 @@ function formatSectionSummary(counts: ImportSectionCounts): string {
 }
 
 export function ResumeUpload() {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [readinessNote, setReadinessNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   return (
@@ -30,12 +33,15 @@ export function ResumeUpload() {
       onSubmit={(e) => {
         e.preventDefault();
         setMessage(null);
+        setReadinessNote(null);
         setError(null);
         const fd = new FormData(e.currentTarget);
         startTransition(async () => {
           const result = await uploadAndParseResume(fd);
           if (result.error) {
             setError(result.error + (result.hint ? ` — ${result.hint}` : ""));
+          } else if (result.awaitingConfirm) {
+            router.refresh();
           } else {
             const summary = result.sectionCounts
               ? formatSectionSummary(result.sectionCounts)
@@ -43,6 +49,15 @@ export function ResumeUpload() {
             setMessage(
               `Imported ${summary}. ${result.inserted} new, ${result.merged} merged, ${result.conflicts} conflicts queued.`
             );
+            const readinessResult = await fetchTailoringReadiness();
+            if ("readiness" in readinessResult && readinessResult.readiness) {
+              setReadinessNote(
+                readinessResult.readiness.ready
+                  ? "Profile now ready to tailor."
+                  : `${readinessResult.readiness.blockers.length} blocker(s) remain — see banner above.`
+              );
+            }
+            router.refresh();
           }
         });
       }}
@@ -52,7 +67,7 @@ export function ResumeUpload() {
         <div>
           <p className="font-medium">Resume upload</p>
           <p className="text-sm text-muted-foreground">
-            PDF or DOCX — AI parse plus section-aware fallback for leadership, skills, and courses
+            PDF or DOCX — parse first, then review changes before applying
           </p>
         </div>
       </div>
@@ -66,10 +81,15 @@ export function ResumeUpload() {
           required
         />
       </div>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input type="checkbox" name="apply_immediately" className="rounded border-border" />
+        Apply immediately (skip preview)
+      </label>
       <Button type="submit" disabled={pending}>
-        {pending ? "Parsing…" : "Upload & parse"}
+        {pending ? "Parsing…" : "Upload & preview"}
       </Button>
       {message && <p className="text-sm text-green-500">{message}</p>}
+      {readinessNote && <p className="text-sm text-muted-foreground">{readinessNote}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </form>
   );

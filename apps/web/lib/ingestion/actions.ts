@@ -7,21 +7,238 @@ import {
   polishLinkedInImportBullets,
   validateProfileData,
   validateProfileLocally,
+  mapLinkedInApiToImport,
+  linkedInImportHasContent,
+  type LinkedInImport,
 } from "@hirevault/ai-core";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { isLinkedInOAuthConfigured } from "@/lib/linkedin/config";
+import {
+  fetchLinkedInMemberData,
+  refreshLinkedInToken,
+} from "@/lib/linkedin/client";
+import { getLinkedInConnectionWithTokens } from "@/lib/linkedin/queries";
+import {
+  decryptLinkedInToken,
+  encryptLinkedInToken,
+} from "@/lib/linkedin/token-crypto";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfileId, getProfileForUser } from "@/lib/profile/get-profile";
+import { getTailoringReadiness } from "@/lib/profile/readiness";
 import { extractResumeText } from "./extract-text";
-import { applyParsedProfile } from "./apply-parsed";
+import { applyParsedProfile, applyReviewedPlans, queueDedupConflicts } from "./apply-parsed";
 import {
   countImportSections,
   normalizeParsedResume,
   normalizeParsedResumeFromText,
 } from "./normalize-parsed-resume";
-import type { DedupResolution, ProfileSection } from "@hirevault/types";
+import { previewParsedProfile } from "./preview-parsed";
+import type {
+  DedupResolution,
+  MergeStrategy,
+  PreviewSummary,
+  ProfileSection,
+  ProfileSource,
+  SectionUpsertPlan,
+} from "@hirevault/types";
+import type { ParsedResume } from "@hirevault/ai-core";
 
 function revalidateIngestion() {
   revalidatePath("/profile/import");
   revalidatePath("/profile");
+}
+
+type IngestionApplyResult = {
+  success: true;
+  runId?: string;
+  inserted: number;
+  merged: number;
+  conflicts: number;
+  awaitingConfirm?: boolean;
+  preview?: PreviewSummary;
+  sectionCounts?: ReturnType<typeof countImportSections>;
+  degraded?: boolean;
+};
+
+type ConfirmIngestionOptions = {
+  mergeStrategy?: MergeStrategy;
+  reviewedPlans?: SectionUpsertPlan[];
+};
+
+async function finalizeIngestionRun(
+  supabase: SupabaseClient,
+  runId: string,
+  profileId: string,
+  parsed: ParsedResume | LinkedInImport,
+  source: ProfileSource,
+  options?: ConfirmIngestionOptions
+) {
+  const stats = options?.reviewedPlans
+    ? await applyReviewedPlans(supabase, profileId, parsed, source, options.reviewedPlans)
+    : await applyParsedProfile(supabase, profileId, parsed, source, options);
+  await queueDedupConflicts(supabase, profileId, stats.conflicts, source);
+
+  await supabase
+    .from("ingestion_runs")
+    .update({
+      status: "completed",
+      parsed_data: parsed as unknown as Record<string, unknown>,
+      preview_summary: null,
+      items_inserted: stats.inserted,
+      items_merged: stats.merged,
+      items_skipped: stats.skipped,
+    })
+    .eq("id", runId);
+
+  return stats;
+}
+
+export async function parseLinkedInForPreview(
+  supabase: SupabaseClient,
+  profileId: string,
+  userId: string,
+  parsed: LinkedInImport,
+  options?: ConfirmIngestionOptions
+) {
+  const preview = await previewParsedProfile(supabase, profileId, parsed, "linkedin", options);
+
+  const { data: run, error } = await supabase
+    .from("ingestion_runs")
+    .insert({
+      profile_id: profileId,
+      user_id: userId,
+      source: "linkedin",
+      status: "awaiting_confirm",
+      parsed_data: parsed,
+      preview_summary: preview,
+    })
+    .select("id")
+    .single();
+
+  if (error || !run) {
+    throw new Error(error?.message ?? "Failed to create ingestion run");
+  }
+
+  return { runId: run.id, preview };
+}
+
+async function ingestLinkedInParsed(
+  supabase: SupabaseClient,
+  profileId: string,
+  userId: string,
+  parsed: LinkedInImport,
+  applyImmediately?: boolean
+): Promise<IngestionApplyResult> {
+  if (applyImmediately) {
+    const { data: run } = await supabase
+      .from("ingestion_runs")
+      .insert({
+        profile_id: profileId,
+        user_id: userId,
+        source: "linkedin",
+        status: "processing",
+        parsed_data: parsed,
+      })
+      .select("id")
+      .single();
+
+    if (!run) return { success: true, inserted: 0, merged: 0, conflicts: 0 };
+
+    const stats = await finalizeIngestionRun(
+      supabase,
+      run.id,
+      profileId,
+      parsed,
+      "linkedin"
+    );
+
+    return {
+      success: true,
+      runId: run.id,
+      inserted: stats.inserted,
+      merged: stats.merged,
+      conflicts: stats.conflicts.length,
+    };
+  }
+
+  const result = await parseLinkedInForPreview(supabase, profileId, userId, parsed);
+  return {
+    success: true,
+    runId: result.runId,
+    inserted: result.preview.totals.insert,
+    merged: result.preview.totals.update,
+    conflicts: result.preview.totals.conflict,
+    awaitingConfirm: true,
+    preview: result.preview,
+  };
+}
+
+export async function confirmIngestionRun(
+  runId: string,
+  options?: ConfirmIngestionOptions
+): Promise<
+  | { error: string }
+  | { success: true; inserted: number; merged: number; conflicts: number }
+> {
+  const supabase = await createClient();
+  const profileId = await requireProfileId();
+
+  const { data: run, error } = await supabase
+    .from("ingestion_runs")
+    .select("*")
+    .eq("id", runId)
+    .eq("profile_id", profileId)
+    .single();
+
+  if (error || !run) return { error: "Import run not found" };
+  if (run.status !== "awaiting_confirm") {
+    return { error: "This import is not awaiting confirmation" };
+  }
+  if (!run.parsed_data) return { error: "Import has no parsed data" };
+
+  const source = run.source as ProfileSource;
+  const parsed = run.parsed_data as ParsedResume | LinkedInImport;
+  const stats = await finalizeIngestionRun(
+    supabase,
+    runId,
+    profileId,
+    parsed,
+    source,
+    options
+  );
+
+  revalidateIngestion();
+  return {
+    success: true as const,
+    inserted: stats.inserted,
+    merged: stats.merged,
+    conflicts: stats.conflicts.length,
+  };
+}
+
+export async function cancelIngestionRun(runId: string) {
+  const supabase = await createClient();
+  const profileId = await requireProfileId();
+
+  const { data: run, error } = await supabase
+    .from("ingestion_runs")
+    .select("id, status")
+    .eq("id", runId)
+    .eq("profile_id", profileId)
+    .single();
+
+  if (error || !run) return { error: "Import run not found" };
+  if (run.status !== "awaiting_confirm") {
+    return { error: "Only pending previews can be cancelled" };
+  }
+
+  await supabase
+    .from("ingestion_runs")
+    .update({ status: "cancelled", preview_summary: null })
+    .eq("id", runId);
+
+  revalidateIngestion();
+  return { success: true as const };
 }
 
 export async function uploadAndParseResume(formData: FormData) {
@@ -108,27 +325,48 @@ export async function uploadAndParseResume(formData: FormData) {
   }
 
   const sectionCounts = countImportSections(normalized);
-  const stats = await applyParsedProfile(supabase, profileId, normalized, "resume_upload");
+  const applyImmediately = formData.get("apply_immediately") === "on";
 
-  for (const c of stats.conflicts) {
-    await supabase.from("dedup_conflicts").insert({
-      profile_id: profileId,
-      section: c.section,
-      existing_id: c.existingId,
-      incoming_data: c.incoming,
-      source: "resume_upload",
-    });
+  if (applyImmediately) {
+    const stats = await finalizeIngestionRun(
+      supabase,
+      run.id,
+      profileId,
+      normalized,
+      "resume_upload"
+    );
+
+    await supabase
+      .from("ingestion_runs")
+      .update({ raw_text: text.slice(0, 50000) })
+      .eq("id", run.id);
+
+    revalidateIngestion();
+    return {
+      success: true,
+      runId: run.id,
+      inserted: stats.inserted,
+      merged: stats.merged,
+      conflicts: stats.conflicts.length,
+      degraded,
+      sectionCounts,
+    };
   }
+
+  const preview = await previewParsedProfile(
+    supabase,
+    profileId,
+    normalized,
+    "resume_upload"
+  );
 
   await supabase
     .from("ingestion_runs")
     .update({
-      status: "completed",
+      status: "awaiting_confirm",
       raw_text: text.slice(0, 50000),
       parsed_data: normalized,
-      items_inserted: stats.inserted,
-      items_merged: stats.merged,
-      items_skipped: stats.skipped,
+      preview_summary: preview,
     })
     .eq("id", run.id);
 
@@ -136,9 +374,11 @@ export async function uploadAndParseResume(formData: FormData) {
   return {
     success: true,
     runId: run.id,
-    inserted: stats.inserted,
-    merged: stats.merged,
-    conflicts: stats.conflicts.length,
+    inserted: preview.totals.insert,
+    merged: preview.totals.update,
+    conflicts: preview.totals.conflict,
+    awaitingConfirm: true,
+    preview,
     degraded,
     sectionCounts,
   };
@@ -156,63 +396,107 @@ export async function importLinkedInJson(formData: FormData) {
   const linkedinUrl = (formData.get("linkedin_url") as string)?.trim();
 
   if (!jsonText) {
-    return {
-      error:
-        "Paste LinkedIn export JSON. Full OAuth import requires LinkedIn API credentials (not configured).",
-    };
+    return { error: "Paste LinkedIn export JSON in the Advanced section." };
   }
 
   const { data: parsedRaw, error: parseError } = parseLinkedInJson(jsonText);
   if (!parsedRaw) return { error: parseError ?? "Invalid JSON" };
 
-  // Polish import bullets — manual create/update paths remain untouched.
   const parsed = await polishLinkedInImportBullets(parsedRaw);
-
   if (linkedinUrl) parsed.linkedin_url = linkedinUrl;
 
-  const { data: run } = await supabase
-    .from("ingestion_runs")
-    .insert({
-      profile_id: profileId,
-      user_id: user.id,
-      source: "linkedin",
-      status: "processing",
-    })
-    .select("id")
-    .single();
-
-  const stats = await applyParsedProfile(supabase, profileId, parsed, "linkedin");
-
-  for (const c of stats.conflicts) {
-    await supabase.from("dedup_conflicts").insert({
-      profile_id: profileId,
-      section: c.section,
-      existing_id: c.existingId,
-      incoming_data: c.incoming,
-      source: "linkedin",
-    });
-  }
-
-  if (run) {
-    await supabase
-      .from("ingestion_runs")
-      .update({
-        status: "completed",
-        parsed_data: parsed,
-        items_inserted: stats.inserted,
-        items_merged: stats.merged,
-        items_skipped: stats.skipped,
-      })
-      .eq("id", run.id);
-  }
-
+  const applyImmediately = formData.get("apply_immediately") === "on";
+  const result = await ingestLinkedInParsed(
+    supabase,
+    profileId,
+    user.id,
+    parsed,
+    applyImmediately
+  );
   revalidateIngestion();
-  return {
-    success: true,
-    inserted: stats.inserted,
-    merged: stats.merged,
-    conflicts: stats.conflicts.length,
-  };
+  return result;
+}
+
+export async function syncLinkedInProfile(formData?: FormData) {
+  if (!isLinkedInOAuthConfigured()) {
+    return { error: "LinkedIn OAuth is not configured on this server." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const profileId = await requireProfileId();
+  const connection = await getLinkedInConnectionWithTokens(profileId);
+  if (!connection) {
+    return { error: "Connect LinkedIn first, then sync your profile." };
+  }
+
+  let accessToken = decryptLinkedInToken(connection.access_token_enc);
+  const expiresAt = new Date(connection.expires_at).getTime();
+  const needsRefresh = expiresAt - Date.now() < 60_000;
+
+  if (needsRefresh) {
+    if (!connection.refresh_token_enc) {
+      return { error: "LinkedIn session expired. Reconnect LinkedIn to continue." };
+    }
+    try {
+      const refreshed = await refreshLinkedInToken(
+        decryptLinkedInToken(connection.refresh_token_enc)
+      );
+      accessToken = refreshed.access_token;
+      const { error: updateError } = await supabase
+        .from("linkedin_connections")
+        .update({
+          access_token_enc: encryptLinkedInToken(refreshed.access_token),
+          refresh_token_enc: refreshed.refresh_token
+            ? encryptLinkedInToken(refreshed.refresh_token)
+            : connection.refresh_token_enc,
+          expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+        })
+        .eq("profile_id", profileId);
+      if (updateError) return { error: updateError.message };
+    } catch (e) {
+      return {
+        error:
+          e instanceof Error
+            ? e.message
+            : "Could not refresh LinkedIn token. Reconnect and try again.",
+      };
+    }
+  }
+
+  let apiPayload;
+  try {
+    apiPayload = await fetchLinkedInMemberData(accessToken);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to fetch LinkedIn profile data.",
+    };
+  }
+
+  const mapped = mapLinkedInApiToImport(apiPayload);
+  if (!linkedInImportHasContent(mapped)) {
+    return {
+      error:
+        "LinkedIn returned limited profile data. Your app may need additional API products, or paste JSON under Advanced.",
+      degraded: true,
+    };
+  }
+
+  const parsed = await polishLinkedInImportBullets(mapped);
+  const applyImmediately = formData?.get("apply_immediately") === "on";
+  const result = await ingestLinkedInParsed(
+    supabase,
+    profileId,
+    user.id,
+    parsed,
+    applyImmediately
+  );
+  revalidateIngestion();
+  return result;
 }
 
 export async function resolveDedupConflict(
@@ -297,10 +581,11 @@ export async function getProfileValidation() {
   if (!profile) return { error: "Profile not found" };
 
   const profileId = profile.id;
-  const [exp, edu, proj, skills] = await Promise.all([
+  const [exp, edu, lead, proj, skills] = await Promise.all([
     supabase.from("experiences").select("*").eq("profile_id", profileId),
     supabase.from("education").select("*").eq("profile_id", profileId),
-    supabase.from("projects").select("*").eq("profile_id", profileId),
+    supabase.from("leadership").select("id").eq("profile_id", profileId),
+    supabase.from("projects").select("id").eq("profile_id", profileId),
     supabase.from("skills").select("*").eq("profile_id", profileId),
   ]);
 
@@ -317,6 +602,8 @@ export async function getProfileValidation() {
     target_roles: profile.target_roles,
     experiences: (exp.data ?? []) as { bullet_points?: string[] }[],
     skills: (skills.data ?? []) as { name: string }[],
+    leadershipCount: lead.data?.length ?? 0,
+    projectsCount: proj.data?.length ?? 0,
   });
 
   const { data: aiResult, degraded } = await validateProfileData(JSON.stringify(payload));
@@ -325,4 +612,11 @@ export async function getProfileValidation() {
     validation: aiResult ?? local,
     degraded,
   };
+}
+
+export async function fetchTailoringReadiness() {
+  const profile = await getProfileForUser();
+  if (!profile) return { error: "Profile not found" as const };
+  const readiness = await getTailoringReadiness(profile.id);
+  return { readiness };
 }

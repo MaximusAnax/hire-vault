@@ -192,7 +192,45 @@ export type ProfileSection =
   | "courses"
   | "leadership";
 
-export type IngestionRunStatus = "pending" | "processing" | "completed" | "failed";
+export type IngestionRunStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "awaiting_confirm"
+  | "cancelled";
+
+export type MergeStrategy = "conservative" | "newest_wins";
+
+export type SectionUpsertAction = "insert" | "update" | "skip" | "conflict";
+
+export interface SectionUpsertPlan {
+  action: SectionUpsertAction;
+  section: ProfileSection;
+  incoming: Record<string, unknown>;
+  existingId?: string;
+  existing?: Record<string, unknown>;
+  merged?: Record<string, unknown>;
+}
+
+export interface PreviewSectionCounts {
+  insert: number;
+  update: number;
+  skip: number;
+  conflict: number;
+}
+
+export interface PreviewProfileHeader {
+  changedFields: string[];
+  update: Record<string, unknown>;
+}
+
+export interface PreviewSummary {
+  bySection: Partial<Record<ProfileSection, PreviewSectionCounts>>;
+  totals: PreviewSectionCounts;
+  plans: SectionUpsertPlan[];
+  profileHeader?: PreviewProfileHeader;
+}
 
 export interface IngestionRun {
   id: string;
@@ -204,6 +242,7 @@ export interface IngestionRun {
   file_name: string | null;
   raw_text: string | null;
   parsed_data: Record<string, unknown> | null;
+  preview_summary: PreviewSummary | null;
   items_inserted: number;
   items_merged: number;
   items_skipped: number;

@@ -5,3 +5,4 @@ export * from "./parse";
 export * from "./write";
 export * from "./resume";
 export * from "./interviews";
+export * from "./linkedin-api";

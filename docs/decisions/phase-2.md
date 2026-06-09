@@ -16,19 +16,35 @@
 
 **Alternatives rejected:** Claude for parsing (weaker JSON adherence per project plan); client-side PDF.js only (heavier bundle).
 
+## Resume normalize: AI-primary experiences (no dual-parser merge)
+
+**Decision:** When GPT returns `experiences` or `leadership`, use those rows only (`pickExperiences` / `pickLeadership` in `normalize-parsed-resume.ts`). The deterministic section parser (`resume-section-parser.ts`) is used for **degraded** imports (no API key) and to **backfill** scalars, skills, education, and courses — not to re-parse the same experience blocks alongside GPT.
+
+**Why:** Merging AI + deterministic experience lists produced duplicate preview rows (good GPT bullets + broken line-parser rows). GPT quality is strictly better for role layout; deterministic merge was the root cause.
+
+**Alternatives rejected:** Fuzzy post-merge coalesce only (fragile on date/title drift); deterministic-only (poor bullets on wrapped lines).
+
+## Import-time bullet polish (opt-in)
+
+**Decision:** `polishParsedResumeBullets` (Claude Haiku) runs only when `RESUME_IMPORT_POLISH=1`. Default off after GPT parse; tailoring still polishes bullets at rewrite time.
+
+**Why:** GPT structured output is sufficient at import; per-role Haiku calls add cost and latency without fixing duplicate-parser issues.
+
 ## Graceful degradation without `OPENAI_API_KEY`
 
 **Decision:** Upload still stores file; parsing returns clear error; local rule-based validation always available.
 
 **Why:** `pnpm quality:check` and local dev work without secrets.
 
-## LinkedIn: JSON paste MVP
+## LinkedIn: OAuth primary, JSON paste fallback
 
-**Decision:** Paste structured JSON + optional profile URL; document that OAuth requires LinkedIn API app credentials.
+**Decision:** When `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`, and redirect URI are configured, `/profile/import` shows **Connect LinkedIn** as the primary path. Tokens are stored encrypted in `linkedin_connections`; sync maps LinkedIn API responses to `LinkedInImport` and feeds the same ingestion pipeline as JSON paste (preview gate when S1 ships).
 
-**Why:** LinkedIn restricted API access makes full OAuth infeasible without user-provided client id/secret; JSON paste is testable immediately.
+**Why:** Official API avoids ToS risk of scraping; JSON paste remains for dev, limited API tiers, and power users with full exports.
 
-**Alternatives rejected:** Scraping profile URL (ToS/legal risk, brittle); blocking import until OAuth (delays MVP).
+**Alternatives rejected:** OAuth-only (blocks dev without LinkedIn app); scraping profile URL (ToS/legal risk, brittle).
+
+**Historical:** JSON paste MVP shipped first while LinkedIn API access was gated; see [auth-linkedin-oauth.md](../setup/auth-linkedin-oauth.md).
 
 ## Deduplication: SHA-256 `source_hash` + conflict queue
 

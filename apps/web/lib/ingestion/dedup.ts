@@ -7,6 +7,7 @@ import {
   hashProject,
   hashSkill,
 } from "@hirevault/ai-core";
+import { normalizeDateForHash } from "./date-normalize";
 
 export function computeSourceHash(
   section: ProfileSection,
@@ -17,19 +18,19 @@ export function computeSourceHash(
       return hashExperience({
         company: String(data.company ?? ""),
         title: String(data.title ?? ""),
-        start_date: (data.start_date as string) ?? null,
+        start_date: normalizeDateForHash(data.start_date as string | null),
       });
     case "leadership":
       return hashLeadership({
         organization: String(data.organization ?? ""),
         title: String(data.title ?? ""),
-        start_date: (data.start_date as string) ?? null,
+        start_date: normalizeDateForHash(data.start_date as string | null),
       });
     case "education":
       return hashEducation({
         institution: String(data.institution ?? ""),
         degree: (data.degree as string) ?? null,
-        start_date: (data.start_date as string) ?? null,
+        start_date: normalizeDateForHash(data.start_date as string | null),
       });
     case "projects":
       return hashProject({ name: String(data.name ?? "") });

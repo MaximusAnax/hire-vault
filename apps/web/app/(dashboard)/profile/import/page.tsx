@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileForUser } from "@/lib/profile/get-profile";
+import { getAwaitingConfirmRun } from "@/lib/ingestion/queries";
 import { ResumeUpload } from "@/components/ingestion/resume-upload";
 import { LinkedInImport } from "@/components/ingestion/linkedin-import";
-import { DedupConflictsPanel } from "@/components/ingestion/dedup-conflicts";
+import { ImportPreviewPanel } from "@/components/ingestion/import-preview-panel";
+import { DedupConflictsPanel, type DedupConflictWithExisting } from "@/components/ingestion/dedup-conflicts";
 import type { DedupConflict, IngestionRun } from "@hirevault/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +17,7 @@ export default async function ProfileImportPage() {
   }
 
   const supabase = await createClient();
-  const [runsRes, conflictsRes] = await Promise.all([
+  const [runsRes, conflictsRes, awaitingRun] = await Promise.all([
     supabase
       .from("ingestion_runs")
       .select("*")
@@ -27,10 +29,25 @@ export default async function ProfileImportPage() {
       .select("*")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false }),
+    getAwaitingConfirmRun(profile.id),
   ]);
 
   const runs = (runsRes.data ?? []) as IngestionRun[];
   const conflicts = (conflictsRes.data ?? []) as DedupConflict[];
+
+  const conflictsWithExisting: DedupConflictWithExisting[] = await Promise.all(
+    conflicts.map(async (conflict) => {
+      const { data } = await supabase
+        .from(conflict.section)
+        .select("*")
+        .eq("id", conflict.existing_id)
+        .maybeSingle();
+      return {
+        ...conflict,
+        existing_data: (data as Record<string, unknown> | null) ?? null,
+      };
+    })
+  );
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -46,6 +63,14 @@ export default async function ProfileImportPage() {
         </Button>
       </div>
 
+      {awaitingRun?.preview_summary && (
+        <ImportPreviewPanel
+          runId={awaitingRun.id}
+          preview={awaitingRun.preview_summary}
+          source={awaitingRun.source}
+        />
+      )}
+
       <ResumeUpload />
       <LinkedInImport />
 
@@ -57,7 +82,7 @@ export default async function ProfileImportPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DedupConflictsPanel conflicts={conflicts} />
+          <DedupConflictsPanel conflicts={conflictsWithExisting} />
         </CardContent>
       </Card>
 

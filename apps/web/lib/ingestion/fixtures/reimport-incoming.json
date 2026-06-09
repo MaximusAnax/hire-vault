@@ -1,0 +1,14 @@
+{
+  "full_name": "Jane Doe",
+  "email": "jane@example.com",
+  "location": "NYC",
+  "experiences": [
+    {
+      "company": "Acme",
+      "title": "Senior Engineer",
+      "start_date": "2020-01",
+      "is_current": true,
+      "bullet_points": ["Shipped v2", "Cut latency 40%"]
+    }
+  ]
+}

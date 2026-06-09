@@ -1,0 +1,28 @@
+{
+  "experiences": [
+    {
+      "id": "exp-1",
+      "profile_id": "profile-1",
+      "company": "Acme",
+      "title": "Engineer",
+      "start_date": "2020-01-01",
+      "end_date": null,
+      "is_current": true,
+      "bullet_points": ["Built API"],
+      "source": "resume_upload",
+      "source_hash": "acme-engineer-hash"
+    }
+  ],
+  "profile": {
+    "id": "profile-1",
+    "source": "resume_upload",
+    "full_name": "Jane Doe",
+    "email": "jane@example.com",
+    "headline": null,
+    "location": "SF",
+    "phone": null,
+    "linkedin_url": null,
+    "github_url": null,
+    "portfolio_url": null
+  }
+}

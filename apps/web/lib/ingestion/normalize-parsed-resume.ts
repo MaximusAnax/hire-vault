@@ -1,5 +1,12 @@
-import type { ParsedCourse, ParsedResume } from "@hirevault/ai-core";
+import type {
+  ParsedCourse,
+  ParsedEducation,
+  ParsedExperience,
+  ParsedLeadership,
+  ParsedResume,
+} from "@hirevault/ai-core";
 import { parseResumeSections } from "./resume-section-parser";
+import { coalesceExperiences, coalesceLeadership } from "./role-dedupe";
 
 function norm(s: string): string {
   return s.toLowerCase().trim().replace(/\s+/g, " ");
@@ -23,24 +30,22 @@ function dedupeByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
   return out;
 }
 
-function mergeExperiences(
+/** AI-primary: use GPT experiences when present; deterministic only when AI omitted them. */
+function pickExperiences(
   ai: ParsedResume["experiences"],
   det: ParsedResume["experiences"]
-): ParsedResume["experiences"] {
-  const combined = [...(ai ?? []), ...(det ?? [])];
-  return dedupeByKey(combined, (e) =>
-    `${norm(e.company)}|${norm(e.title)}|${e.start_date ?? ""}`
-  );
+): ParsedExperience[] | undefined {
+  if ((ai?.length ?? 0) > 0) return coalesceExperiences(ai);
+  return coalesceExperiences(det ?? []);
 }
 
-function mergeLeadership(
+/** AI-primary: use GPT leadership when present; deterministic only when AI omitted it. */
+function pickLeadership(
   ai: ParsedResume["leadership"],
   det: ParsedResume["leadership"]
-): ParsedResume["leadership"] {
-  const combined = [...(ai ?? []), ...(det ?? [])];
-  return dedupeByKey(combined, (l) =>
-    `${norm(l.organization)}|${norm(l.title)}|${l.start_date ?? ""}`
-  );
+): ParsedLeadership[] | undefined {
+  if ((ai?.length ?? 0) > 0) return coalesceLeadership(ai);
+  return coalesceLeadership(det ?? []);
 }
 
 function mergeSkills(
@@ -51,12 +56,54 @@ function mergeSkills(
   return dedupeByKey(combined, (s) => norm(s.name));
 }
 
+/** Split "BS in Computer Science" when field_of_study was omitted. */
+export function normalizeEducationEntry(entry: ParsedEducation): ParsedEducation {
+  let degree = entry.degree?.trim() || null;
+  let field_of_study = entry.field_of_study?.trim() || null;
+
+  if (!field_of_study && degree) {
+    const inMatch = degree.match(/^(.+?)\s+in\s+(.+)$/i);
+    if (inMatch) {
+      degree = inMatch[1].trim();
+      field_of_study = inMatch[2].trim();
+    }
+  }
+
+  return { ...entry, degree, field_of_study };
+}
+
 function mergeEducation(
   ai: ParsedResume["education"],
   det: ParsedResume["education"]
 ): ParsedResume["education"] {
-  const combined = [...(ai ?? []), ...(det ?? [])];
-  return dedupeByKey(combined, (e) => `${norm(e.institution)}|${norm(e.degree ?? "")}`);
+  const combined = [...(ai ?? []), ...(det ?? [])].map(normalizeEducationEntry);
+  const byInstitution = new Map<string, ParsedEducation>();
+
+  for (const entry of combined) {
+    const key = norm(entry.institution ?? "");
+    if (!key) continue;
+    const prev = byInstitution.get(key);
+    if (!prev) {
+      byInstitution.set(key, entry);
+      continue;
+    }
+
+    const merged: ParsedEducation = normalizeEducationEntry({
+      ...prev,
+      ...entry,
+      degree: prev.degree || entry.degree,
+      field_of_study: prev.field_of_study || entry.field_of_study,
+      expected_graduation: prev.expected_graduation ?? entry.expected_graduation,
+      start_date: prev.start_date ?? entry.start_date,
+      gpa: prev.gpa ?? entry.gpa,
+      relevant_courses: [
+        ...new Set([...(prev.relevant_courses ?? []), ...(entry.relevant_courses ?? [])]),
+      ],
+    });
+    byInstitution.set(key, merged);
+  }
+
+  return [...byInstitution.values()];
 }
 
 function mergeCourses(
@@ -110,7 +157,8 @@ export function countImportSections(parsed: ParsedResume): ImportSectionCounts {
 
 /**
  * Merge AI-parsed resume with deterministic section parse.
- * Prefer AI when present; backfill gaps from section parser.
+ * Experiences/leadership: AI-only when GPT returned rows (no deterministic re-parse merge).
+ * Skills, education, scalars: AI preferred with deterministic backfill.
  */
 export function normalizeParsedResume(
   rawText: string,
@@ -132,9 +180,9 @@ export function normalizeParsedResume(
     github_url: mergeScalar(base.github_url, det.github_url),
     portfolio_url: mergeScalar(base.portfolio_url, det.portfolio_url),
     location: mergeScalar(base.location, det.location),
-    experiences: mergeExperiences(base.experiences, det.experiences),
+    experiences: pickExperiences(base.experiences, det.experiences),
     education,
-    leadership: mergeLeadership(base.leadership, det.leadership),
+    leadership: pickLeadership(base.leadership, det.leadership),
     skills: mergeSkills(base.skills, det.skills),
     projects: base.projects?.length ? base.projects : det.projects,
     courses: mergeCourses(
