@@ -6,7 +6,7 @@ export function ImportHealthBadge({ count }: { count: number }) {
   return (
     <Link
       href="/profile/import"
-      className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+      className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 transition-colors"
     >
       {count === 1 ? "1 import conflict" : `${count} import conflicts`}
     </Link>

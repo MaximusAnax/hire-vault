@@ -15,14 +15,6 @@ const config: Config = {
         mono: ["var(--font-jetbrains)", "ui-monospace", "monospace"],
       },
       colors: {
-        brand: {
-          jet: "#022b3a",
-          teal: "#1f7a8c",
-          sky: "#bfdbf7",
-          lavender: "#e1e5f2",
-          white: "#ffffff",
-        },
-        bright: "hsl(var(--bright))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

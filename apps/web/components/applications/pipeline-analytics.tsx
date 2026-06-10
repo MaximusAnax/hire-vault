@@ -36,8 +36,8 @@ export function PipelineAnalytics({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="h-64 rounded-md border border-border bg-card p-3">
-        <p className="text-sm font-medium mb-2 text-foreground">Pipeline by status</p>
+      <div className="h-64 rounded-md border border-border p-3">
+        <p className="text-sm font-medium mb-2">Pipeline by status</p>
         <ResponsiveContainer width="100%" height="90%">
           <BarChart data={pipeline}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartGridStroke} />
@@ -48,8 +48,8 @@ export function PipelineAnalytics({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="h-64 rounded-md border border-border bg-card p-3">
-        <p className="text-sm font-medium mb-2 text-foreground">Distribution</p>
+      <div className="h-64 rounded-md border border-border p-3">
+        <p className="text-sm font-medium mb-2">Distribution</p>
         <ResponsiveContainer width="100%" height="90%">
           <PieChart>
             <Pie
@@ -70,16 +70,16 @@ export function PipelineAnalytics({
         </ResponsiveContainer>
       </div>
       <div className="lg:col-span-2 grid grid-cols-3 gap-3 text-center text-sm">
-        <div className="rounded-md border border-border bg-card p-3">
-          <p className="text-2xl font-bold text-bright">{responseRate}%</p>
+        <div className="rounded-md border border-border p-3">
+          <p className="text-2xl font-bold text-primary">{responseRate}%</p>
           <p className="text-muted-foreground">Response rate</p>
         </div>
-        <div className="rounded-md border border-border bg-card p-3">
-          <p className="text-2xl font-bold text-bright">{offerRate}%</p>
+        <div className="rounded-md border border-border p-3">
+          <p className="text-2xl font-bold text-primary">{offerRate}%</p>
           <p className="text-muted-foreground">Offer rate (of applied)</p>
         </div>
-        <div className="rounded-md border border-border bg-card p-3">
-          <p className="text-2xl font-bold text-bright">{velocity30d}</p>
+        <div className="rounded-md border border-border p-3">
+          <p className="text-2xl font-bold text-primary">{velocity30d}</p>
           <p className="text-muted-foreground">Apps added (30d)</p>
         </div>
       </div>

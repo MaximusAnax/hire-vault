@@ -25,9 +25,9 @@ export const SEVERITY_LABELS: Record<ActionSeverity, string> = {
 };
 
 export const SEVERITY_STYLES: Record<ActionSeverity, string> = {
-  blocking: "bg-destructive/10 text-destructive border-destructive/30",
-  soon: "border-border bg-muted text-foreground",
-  optional: "bg-muted/60 text-muted-foreground border-border",
+  blocking: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30",
+  soon: "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30",
+  optional: "bg-muted text-muted-foreground border-border",
 };
 
 export function actionCtaLabel(kind: OverviewActionKind): string {
