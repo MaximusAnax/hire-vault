@@ -1,7 +1,17 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { getApplicationsWithJobs, getApplicationStats } from "@/lib/applications/queries";
 import { CaptureReviewPanel } from "@/components/applications/capture-review-panel";
-import { getResumeSummariesByApplication } from "@/lib/resumes/queries";
+import {
+  overviewTaskLabel,
+  parseOverviewTaskParam,
+  filterApplicationsByOverviewTask,
+} from "@/lib/overview/overview-task-filter";
+import { getInterviewPrepSummariesByJobId } from "@/lib/interviews/queries";
+import {
+  getResumeActionSignalsByApplication,
+  getResumeSummariesByApplication,
+} from "@/lib/resumes/queries";
 import { KanbanBoard } from "@/components/applications/kanban-board";
 import { ApplicationListView } from "@/components/applications/application-list-view";
 import { ApplicationFilters } from "@/components/applications/application-filters";
@@ -38,13 +48,26 @@ export default async function ApplicationsPage({
   };
 
   const view = params.view === "list" ? "list" : "board";
+  const overviewTask = parseOverviewTaskParam(params.overviewTask);
 
-  const [applications, needsReviewApps, stats, resumeSummaries] = await Promise.all([
-    getApplicationsWithJobs(filters),
-    getApplicationsWithJobs({ needsReview: true }),
-    getApplicationStats(),
-    getResumeSummariesByApplication(),
-  ]);
+  const [applicationsRaw, needsReviewApps, stats, resumeSummaries, resumeSignals, interviewSummaries] =
+    await Promise.all([
+      getApplicationsWithJobs(overviewTask ? { activeOnly: true, sort: filters.sort } : filters),
+      getApplicationsWithJobs({ needsReview: true }),
+      getApplicationStats(),
+      getResumeSummariesByApplication(),
+      getResumeActionSignalsByApplication(),
+      getInterviewPrepSummariesByJobId(),
+    ]);
+
+  const applications = overviewTask
+    ? filterApplicationsByOverviewTask(
+        applicationsRaw,
+        overviewTask,
+        resumeSignals,
+        interviewSummaries
+      )
+    : applicationsRaw;
 
   const needsReviewCount = needsReviewApps.length;
 
@@ -63,6 +86,18 @@ export default async function ApplicationsPage({
         offerRate={stats.offerRate}
         velocity30d={stats.velocity30d}
       />
+
+      {overviewTask ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <p>
+            Showing <span className="font-medium">{applications.length}</span> role
+            {applications.length === 1 ? "" : "s"} — {overviewTaskLabel(overviewTask)}
+          </p>
+          <Link href="/applications" className="text-primary hover:underline text-xs">
+            Clear overview filter
+          </Link>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <Suspense fallback={null}>

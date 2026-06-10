@@ -4,30 +4,32 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 252 83% 67%;
+    /* HireVault palette: jet-black, teal, pale-sky, lavender, white */
+    --background: 196 93% 12%;
+    --foreground: 226 40% 92%;
+    --bright: 0 0% 100%;
+    --card: 196 93% 12%;
+    --card-foreground: 226 40% 92%;
+    --popover: 196 93% 12%;
+    --popover-foreground: 226 40% 92%;
+    --primary: 190 64% 34%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 252 83% 67%;
+    --secondary: 210 35% 18%;
+    --secondary-foreground: 226 40% 92%;
+    --muted: 210 35% 18%;
+    --muted-foreground: 210 55% 75%;
+    --accent: 210 78% 86%;
+    --accent-foreground: 196 93% 12%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 25% 28%;
+    --input: 210 35% 18%;
+    --ring: 190 64% 34%;
     --radius: 0.5rem;
-    --sidebar-background: 240 10% 5%;
-    --sidebar-foreground: 240 5% 90%;
-    --sidebar-border: 240 4% 14%;
-    --sidebar-accent: 252 40% 20%;
+    --sidebar-background: 196 93% 12%;
+    --sidebar-foreground: 226 40% 92%;
+    --sidebar-border: 210 25% 28%;
+    --sidebar-accent: 226 25% 16%;
   }
 }
 

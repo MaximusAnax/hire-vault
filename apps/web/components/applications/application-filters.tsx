@@ -44,7 +44,8 @@ export function ApplicationFilters({ needsReviewCount = 0 }: ApplicationFiltersP
     params.get("location") ||
     params.get("active") === "1" ||
     params.get("remote") === "1" ||
-    params.get("needsReview") === "1";
+    params.get("needsReview") === "1" ||
+    params.get("overviewTask");
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-3">

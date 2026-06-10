@@ -317,6 +317,20 @@ export interface OverviewAction {
   metadata?: Record<string, unknown>;
 }
 
+export interface OverviewActionGroup {
+  kind: OverviewActionKind;
+  priority: number;
+  title: string;
+  subtitle: string;
+  href: string;
+  count: number;
+  items: OverviewAction[];
+}
+
+export type OverviewQueueItem =
+  | { type: "global"; action: OverviewAction }
+  | { type: "group"; group: OverviewActionGroup };
+
 export interface IngestionRun {
   id: string;
   profile_id: string;

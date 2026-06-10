@@ -8,8 +8,14 @@ import {
   getResumeActionSignalsByApplication,
   type ResumeActionSignals,
 } from "@/lib/resumes/queries";
-import type { ApplicationWithJob, OverviewAction, Profile } from "@hirevault/types";
+import type {
+  ApplicationWithJob,
+  OverviewAction,
+  OverviewQueueItem,
+  Profile,
+} from "@hirevault/types";
 import type { InterviewPrepSummary } from "@/lib/interviews/queries";
+import { aggregateOverviewActions } from "./aggregate-overview-actions";
 import {
   deriveOverviewActions,
   type TailoringBlocker,
@@ -32,6 +38,7 @@ export interface OverviewDashboard {
   readinessReady: boolean;
   readinessBlockers: OverviewAction[];
   actions: OverviewAction[];
+  queue: OverviewQueueItem[];
   weeklyApplicationGoal: number;
   appliedThisWeek: number;
 }
@@ -97,6 +104,8 @@ export async function getOverviewDashboard(): Promise<OverviewDashboard | null> 
     readinessBlockers: toTailoringBlockers(readinessBlockers),
   });
 
+  const queue = aggregateOverviewActions(actions);
+
   return {
     profile,
     apps,
@@ -106,6 +115,7 @@ export async function getOverviewDashboard(): Promise<OverviewDashboard | null> 
     readinessReady: readiness.ready,
     readinessBlockers,
     actions,
+    queue,
     weeklyApplicationGoal: profile.weekly_application_goal,
     appliedThisWeek: countAppliedThisWeek(allApps),
   };
