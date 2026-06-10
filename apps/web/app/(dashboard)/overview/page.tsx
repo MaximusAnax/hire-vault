@@ -36,24 +36,11 @@ export default async function OverviewPage() {
         <ImportHealthBadge count={dashboard.pendingConflictsCount} />
       </div>
 
-      <ActionQueue actions={dashboard.actions} />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <WeeklyVelocity
           appliedThisWeek={dashboard.appliedThisWeek}
           goal={dashboard.weeklyApplicationGoal}
         />
-        {!dashboard.readinessReady ? (
-          <div className="sm:col-span-2">
-            <ProfileReadinessBanner
-              ready={dashboard.readinessReady}
-              blockers={dashboard.readinessBlockers}
-            />
-          </div>
-        ) : null}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
@@ -94,6 +81,15 @@ export default async function OverviewPage() {
         offerRate={stats.offerRate}
         velocity30d={stats.velocity30d}
       />
+
+      {!dashboard.readinessReady ? (
+        <ProfileReadinessBanner
+          ready={dashboard.readinessReady}
+          blockers={dashboard.readinessBlockers}
+        />
+      ) : null}
+
+      <ActionQueue queue={dashboard.queue} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
