@@ -28,7 +28,7 @@ export default async function OverviewPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-bright">Overview</h1>
           <p className="text-muted-foreground">
             Prioritized next steps across your pipeline, profile, and prep.
           </p>
@@ -46,7 +46,7 @@ export default async function OverviewPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.total}</p>
+            <p className="text-3xl font-bold text-bright">{stats.total}</p>
           </CardContent>
         </Card>
         <Card>
@@ -54,7 +54,7 @@ export default async function OverviewPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Applied</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.applied}</p>
+            <p className="text-3xl font-bold text-bright">{stats.applied}</p>
           </CardContent>
         </Card>
         <Card>
@@ -62,7 +62,7 @@ export default async function OverviewPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Response rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.responseRate}%</p>
+            <p className="text-3xl font-bold text-bright">{stats.responseRate}%</p>
           </CardContent>
         </Card>
         <Card>
@@ -70,7 +70,7 @@ export default async function OverviewPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Offers</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{stats.byStatus.offer ?? 0}</p>
+            <p className="text-3xl font-bold text-bright">{stats.byStatus.offer ?? 0}</p>
           </CardContent>
         </Card>
       </div>
@@ -102,7 +102,7 @@ export default async function OverviewPage() {
           {recentFive.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No applications yet.{" "}
-              <Link href="/applications" className="text-primary hover:underline">
+              <Link href="/applications" className="text-accent hover:text-primary hover:underline">
                 Capture your first role
               </Link>
             </p>
@@ -117,7 +117,7 @@ export default async function OverviewPage() {
                     {a.job_id ? (
                       <Link
                         href={resumeBuilderUrl(a.id)}
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-accent hover:text-primary hover:underline"
                       >
                         Resume
                       </Link>

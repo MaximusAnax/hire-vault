@@ -43,9 +43,9 @@ export function Sidebar() {
       className="flex h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
     >
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-3">
-        <Sparkles className="h-5 w-5 shrink-0 text-primary" />
+        <Sparkles className="h-5 w-5 shrink-0 text-muted-foreground" />
         {!collapsed && (
-          <span className="font-semibold tracking-tight">HireVault</span>
+          <span className="font-semibold tracking-tight text-bright">HireVault</span>
         )}
       </div>
 
@@ -58,8 +58,9 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent/50",
-                  active && "bg-sidebar-accent text-foreground"
+                  "flex items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground",
+                  active &&
+                    "border-l-2 border-primary bg-sidebar-accent pl-[calc(0.5rem-2px)] text-bright"
                 )}
                 title={collapsed ? item.label : undefined}
               >
@@ -78,8 +79,9 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent/50",
-                  active && "bg-sidebar-accent"
+                  "flex items-center gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground",
+                  active &&
+                    "border-l-2 border-primary bg-sidebar-accent pl-[calc(0.5rem-2px)] text-bright"
                 )}
                 title={collapsed ? item.label : undefined}
               >
