@@ -2,6 +2,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getApplicationsWithJobs } from "@/lib/applications/queries";
 import type { ResumeSummary } from "@/lib/resumes/resume-summary";
 
+export interface ResumeActionSignals {
+  hasResume: boolean;
+  keywordGaps: string[];
+  atsScore: number | null;
+  hasPdf: boolean;
+  pendingTechSuggestions: number;
+  generatedAt: string | null;
+}
+
 export async function getApplicationsForResumeWorkspace() {
   return getApplicationsWithJobs({ sort: "updated" });
 }
@@ -40,6 +49,32 @@ export async function getResumeSummariesByApplication(): Promise<Record<string, 
     } else {
       map[appId].count += 1;
     }
+  }
+  return map;
+}
+
+export async function getResumeActionSignalsByApplication(): Promise<
+  Record<string, ResumeActionSignals>
+> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tailored_resumes")
+    .select("application_id, ats_score, keyword_gaps, pdf_storage_path, generated_at")
+    .order("generated_at", { ascending: false });
+  if (error || !data) return {};
+
+  const map: Record<string, ResumeActionSignals> = {};
+  for (const row of data) {
+    const appId = row.application_id as string;
+    if (map[appId]) continue;
+    map[appId] = {
+      hasResume: true,
+      keywordGaps: (row.keyword_gaps as string[] | null) ?? [],
+      atsScore: row.ats_score as number | null,
+      hasPdf: Boolean(row.pdf_storage_path),
+      pendingTechSuggestions: 0,
+      generatedAt: (row.generated_at as string | null) ?? null,
+    };
   }
   return map;
 }

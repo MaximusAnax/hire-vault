@@ -20,6 +20,26 @@ export interface ExperienceMatch {
   gaps: string[];
 }
 
+/** Tokenize JD fields into lowercase keywords for skill nudges and ATS checks. */
+export function extractJdKeywords(
+  jd: ParsedJobDescription | null,
+  descriptionRaw?: string | null
+): string[] {
+  const keywords = new Set<string>();
+  const add = (s: string) => {
+    s
+      .toLowerCase()
+      .split(/[^a-z0-9+#.]+/)
+      .filter((w) => w.length > 2)
+      .forEach((w) => keywords.add(w));
+  };
+  jd?.tech_stack?.forEach(add);
+  jd?.required_qualifications?.forEach(add);
+  jd?.preferred_qualifications?.forEach(add);
+  if (descriptionRaw) add(descriptionRaw);
+  return [...keywords];
+}
+
 export function scoreExperiencesAgainstJd(
   experiences: {
     id: string;

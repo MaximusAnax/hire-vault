@@ -17,3 +17,12 @@ export function resumeCtaLabel(summary: ResumeSummary | undefined): string {
   if (!summary || summary.count === 0) return "Tailor resume";
   return `Open v${summary.latestVersion}`;
 }
+
+export function resumeGapLabel(gapCount: number): string {
+  if (gapCount === 1) return "1 keyword gap";
+  return `${gapCount} keyword gaps`;
+}
+
+export function resumeAtsLabel(atsScore: number): string {
+  return `ATS ${atsScore}`;
+}

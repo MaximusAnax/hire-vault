@@ -83,7 +83,7 @@ export async function getOverviewDashboard(): Promise<OverviewDashboard | null> 
   ]);
 
   const profileSkills = (skillsRes.data ?? [])
-    .map((row) => row.name as string)
+    .map((row: { name: string }) => row.name)
     .filter(Boolean);
 
   const readinessBlockers = readiness.blockers;
