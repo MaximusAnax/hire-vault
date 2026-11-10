@@ -3,7 +3,7 @@
 **Do not use `apps/web/.env.local`.** All keys load from the repository root:
 
 ```
-career-support/.env
+<repo-root>/.env
 ```
 
 Next.js reads this via `loadEnvConfig` in `apps/web/next.config.ts`. Copy `.env.example` at the repo root and restart `pnpm dev` after changes.

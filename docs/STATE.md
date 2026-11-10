@@ -85,7 +85,7 @@ pnpm db db push
 |-----------|---------|
 | `20260609120000_profile_overview_foundation.sql` | `ingestion_runs` preview statuses + `preview_summary`; `profiles.weekly_application_goal` |
 | `20260610120000_linkedin_connections.sql` | OAuth token storage + RLS |
-| `*application_capture_review*` *(pending Stream C)* | `applications.needs_review`, `capture_source` |
+| `20260611120000_application_capture_review.sql` | `applications.needs_review`, `capture_source` |
 
 (Other recent migrations may exist in the same branch — push applies all pending.)
 
@@ -95,7 +95,6 @@ pnpm db db push
 - **LaTeX override** optional per application resume; cleared when structured content is saved (after confirm)
 - **ATS score** is keyword-density heuristic, not vendor ATS simulation
 - **Extension scrapers** break on DOM changes — page-dump fallback + manual paste
-- **Capture review inbox** UI is wired; `needs_review` column + extension quick-save require Stream C migration + capture API update
 - **Company research** in interview prep is a minimal stub
 - **LinkedIn OAuth** depends on LinkedIn app approval and member API scopes; sync uses same preview gate as upload
 - **Apply immediately** fast-path checkbox (plan optional) may not be wired — preview is default
